@@ -34,7 +34,7 @@ export function ChatInput({ input, setInput, onSubmit, isLoading = false, onStop
   }
 
   return (
-    <div className="relative w-full max-w-3xl mx-auto px-4 pb-4">
+    <div className="relative w-full max-w-4xl mx-auto">
       <form
         onSubmit={(e) => {
           e.preventDefault()

@@ -25,7 +25,7 @@ import {
 
 function ChatSkeleton() {
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-24 pt-4 animate-pulse">
+    <div className="max-w-4xl mx-auto space-y-8 pb-8 pt-4 animate-pulse">
       {/* Assistant bubble skeleton */}
       <div className="flex w-full gap-3 my-5">
         <div className="h-8 w-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 shrink-0" />
@@ -497,70 +497,73 @@ export default function ChatPage() {
           onNewChat={handleNewChat}
         />
 
-        {/* Scrollable Messages Area */}
-        <div
-          ref={scrollContainerRef}
-          onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-6 scrollbar-thin scrollbar-thumb-white/10"
-        >
-          {isConversationsLoading ? (
-            <ChatSkeleton />
-          ) : isLoading ? (
-            <div className="max-w-4xl mx-auto space-y-6 pb-24">
-              {activeMessages.map((msg) => {
-                if (msg.role === "user") {
-                  return <UserMessage key={msg.id} content={msg.content} />
-                } else {
-                  return <AssistantMessage key={msg.id} message={msg} />
-                }
-              })}
-              <div ref={messagesEndRef} />
-            </div>
-          ) : activeId === "" ? (
-            <motion.div
-              key="empty-state"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <EmptyState onSelectSuggestion={(promptText: string) => handleSubmitMessage(promptText)} />
-            </motion.div>
-          ) : isMessagesLoading ? (
-            <ChatSkeleton />
-          ) : activeMessages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full min-h-[45vh] text-center text-slate-400">
-              <div className="h-12 w-12 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-center mb-3 text-emerald-400 shadow-inner">
-                <MessageSquare className="h-5 w-5" />
+        {/* Scrollable Messages Area Wrapper */}
+        <div className="relative flex-1 min-h-0">
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleScroll}
+            className="h-full overflow-y-auto px-4 md:px-8 py-6 space-y-6 scrollbar-thin scrollbar-thumb-white/10"
+          >
+            {isConversationsLoading ? (
+              <ChatSkeleton />
+            ) : isLoading ? (
+              <div className="max-w-4xl mx-auto space-y-6 pb-8">
+                {activeMessages.map((msg) => {
+                  if (msg.role === "user") {
+                    return <UserMessage key={msg.id} content={msg.content} />
+                  } else {
+                    return <AssistantMessage key={msg.id} message={msg} />
+                  }
+                })}
+                <div ref={messagesEndRef} />
               </div>
-              <p className="text-sm font-semibold text-slate-200">No messages in this chat yet</p>
-              <p className="text-xs text-slate-500 mt-1 max-w-xs">Ask a question or enter a prompt below to start chatting.</p>
-            </div>
-          ) : (
-            <motion.div
-              key={activeId || "active-chat"}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="max-w-4xl mx-auto space-y-6 pb-24"
-            >
-              {activeMessages.map((msg) => {
-                if (msg.role === "user") {
-                  return <UserMessage key={msg.id} content={msg.content} />
-                } else {
-                  return <AssistantMessage key={msg.id} message={msg} />
-                }
-              })}
-              <div ref={messagesEndRef} />
-            </motion.div>
-          )}
+            ) : activeId === "" ? (
+              <motion.div
+                key="empty-state"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col justify-center min-h-full py-8"
+              >
+                <EmptyState onSelectSuggestion={(promptText: string) => handleSubmitMessage(promptText)} />
+              </motion.div>
+            ) : isMessagesLoading ? (
+              <ChatSkeleton />
+            ) : activeMessages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full min-h-[45vh] py-8 text-center text-slate-400">
+                <div className="h-12 w-12 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-center mb-3 text-emerald-400 shadow-inner">
+                  <MessageSquare className="h-5 w-5" />
+                </div>
+                <p className="text-sm font-semibold text-slate-200">No messages in this chat yet</p>
+                <p className="text-xs text-slate-500 mt-1 max-w-xs">Ask a question or enter a prompt below to start chatting.</p>
+              </div>
+            ) : (
+              <motion.div
+                key={activeId || "active-chat"}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="max-w-4xl mx-auto space-y-6 pb-8"
+              >
+                {activeMessages.map((msg) => {
+                  if (msg.role === "user") {
+                    return <UserMessage key={msg.id} content={msg.content} />
+                  } else {
+                    return <AssistantMessage key={msg.id} message={msg} />
+                  }
+                })}
+                <div ref={messagesEndRef} />
+              </motion.div>
+            )}
+          </div>
+
+          {/* Floating Scroll to Bottom Button */}
+          {showScrollBottom && <ScrollToBottom onClick={scrollToBottom} />}
         </div>
 
-        {/* Floating Scroll to Bottom Button */}
-        {showScrollBottom && <ScrollToBottom onClick={scrollToBottom} />}
-
-        {/* Floating Chat Input Bar */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-[#0A0F18] via-[#0A0F18]/90 to-transparent pointer-events-none">
-          <div className="max-w-4xl mx-auto pointer-events-auto">
+        {/* Dedicated Chat Input Area with clear spacing */}
+        <div className="shrink-0 px-4 md:px-8 pt-4 pb-6 bg-[#0A0F18] border-t border-white/[0.06]">
+          <div className="max-w-4xl mx-auto">
             <ChatInput
               input={input}
               setInput={setInput}
