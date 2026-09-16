@@ -29,7 +29,7 @@ def get_tool_retry_middleware(
         jitter=True,
         tools=tools or ["tavily_search_results_json"],
         retry_on=(ConnectionError, TimeoutError, Exception),
-        on_failure="continue",
+        on_failure=custom_tool_error_handler,
     )
 
 
