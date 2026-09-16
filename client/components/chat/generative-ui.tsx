@@ -8,7 +8,10 @@ import { InfoCard } from "./generative/info-card"
 import { SearchResults } from "./generative/search-results"
 import { ProjectCard } from "./generative/project-card"
 import { TimeCard } from "./generative/time-card"
+<<<<<<< HEAD
 import { MathCard } from "./generative/math-card"
+=======
+>>>>>>> e81ced083e8c3452bb7be45cea8765c007ad3a4b
 import { AlertCircle } from "lucide-react"
 
 // Explicit safe component registry map
@@ -20,8 +23,11 @@ const componentRegistry: Record<string, React.ComponentType<any>> = {
   project: ProjectCard,
   time: TimeCard,
   time_card: TimeCard,
+<<<<<<< HEAD
   math: MathCard,
   math_card: MathCard,
+=======
+>>>>>>> e81ced083e8c3452bb7be45cea8765c007ad3a4b
 }
 
 interface GenerativeUIRendererProps {

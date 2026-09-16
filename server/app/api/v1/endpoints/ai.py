@@ -195,6 +195,7 @@ async def event_generator(request: Request, message: str, thread_id: str):
                 })
                 yield f"data: {ui_payload}\n\n"
 
+<<<<<<< HEAD
             # 2c. Math Tool Invocation End (Generative UI payload stream)
             elif kind == "on_tool_end" and ("math" in name.lower() or "math_tool" in name.lower()):
                 raw_output = event.get("data", {}).get("output", "")
@@ -218,6 +219,8 @@ async def event_generator(request: Request, message: str, thread_id: str):
                 except Exception:
                     pass
 
+=======
+>>>>>>> e81ced083e8c3452bb7be45cea8765c007ad3a4b
             # 3. LLM Thinking & Reasoning Tokens
             elif kind == "on_chat_model_stream":
                 chunk = event["data"]["chunk"]
