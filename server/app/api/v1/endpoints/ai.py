@@ -145,6 +145,54 @@ async def event_generator(request: Request, message: str, thread_id: str):
                 })
                 yield f"data: {payload}\n\n"
 
+            # 2b. Time Tool Invocation End (Generative UI payload stream)
+            elif kind == "on_tool_end" and ("time" in name.lower() or "get_current_time" in name.lower()):
+                raw_output = str(event.get("data", {}).get("output", ""))
+                raw_input = event.get("data", {}).get("input", {})
+                loc_name = "Tokyo, Japan"
+                if isinstance(raw_input, dict):
+                    loc_name = str(raw_input.get("timezone") or raw_input.get("location") or raw_input.get("city") or "Tokyo, Japan")
+                elif isinstance(raw_input, str):
+                    loc_name = raw_input
+
+                city_country_map = {
+                    "tokyo": ("Tokyo, Japan", "Asia/Tokyo", "+09:00 (JST)", "🇯🇵"),
+                    "japan": ("Tokyo, Japan", "Asia/Tokyo", "+09:00 (JST)", "🇯🇵"),
+                    "delhi": ("New Delhi, India", "Asia/Kolkata", "+05:30 (IST)", "🇮🇳"),
+                    "india": ("New Delhi, India", "Asia/Kolkata", "+05:30 (IST)", "🇮🇳"),
+                    "kolkata": ("New Delhi, India", "Asia/Kolkata", "+05:30 (IST)", "🇮🇳"),
+                    "london": ("London, UK", "Europe/London", "+00:00 (GMT)", "🇬🇧"),
+                    "uk": ("London, UK", "Europe/London", "+00:00 (GMT)", "🇬🇧"),
+                    "york": ("New York, USA", "America/New_York", "-05:00 (EST)", "🇺🇸"),
+                    "dubai": ("Dubai, UAE", "Asia/Dubai", "+04:00 (GST)", "🇦🇪"),
+                    "singapore": ("Singapore", "Asia/Singapore", "+08:00 (SGT)", "🇸🇬"),
+                }
+
+                display_loc = loc_name
+                tz_id = loc_name
+                offset_str = "UTC Offset"
+                flag_emoji = "📍"
+
+                for k, v in city_country_map.items():
+                    if k in loc_name.lower():
+                        display_loc, tz_id, offset_str, flag_emoji = v
+                        break
+
+                ui_payload = json.dumps({
+                    "type": "ui",
+                    "ui": {
+                        "type": "time",
+                        "props": {
+                            "location": display_loc,
+                            "flag": flag_emoji,
+                            "time": raw_output,
+                            "timezone": tz_id,
+                            "offset": offset_str,
+                        }
+                    }
+                })
+                yield f"data: {ui_payload}\n\n"
+
             # 3. LLM Thinking & Reasoning Tokens
             elif kind == "on_chat_model_stream":
                 chunk = event["data"]["chunk"]

@@ -284,6 +284,11 @@ export default function ChatPage() {
                   thinkingTime: `${durationSeconds}s`,
                   statusLabel: undefined,
                 }
+              } else if (event.type === "ui") {
+                return {
+                  ...msg,
+                  ui: event.ui || (event as any).component,
+                }
               } else if (event.type === "end") {
                 return { ...msg, statusLabel: undefined }
               }

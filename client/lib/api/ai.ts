@@ -1,4 +1,5 @@
 import { api } from "./axios";
+import { GenerativeUIResponse } from "@/types/chat";
 
 export interface ChatRequest {
   message: string;
@@ -27,6 +28,7 @@ export type SSEEvent =
     }
   | { type: "thinking"; content: string }
   | { type: "token"; content: string }
+  | { type: "ui"; ui: GenerativeUIResponse }
   | { type: "end" }
   | { type: "error"; message: string };
 
