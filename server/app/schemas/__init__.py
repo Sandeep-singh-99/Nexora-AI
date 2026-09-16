@@ -6,7 +6,20 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     TokenResponse,
     UserResponse,
-    MessageResponse,
+    MessageResponse as AuthMessageResponse,
+)
+from app.schemas.chat import (
+    ConversationCreate,
+    ConversationUpdate,
+    ConversationResponse,
+    ConversationListResponse,
+    MessageResponse as ChatMessageResponse,
+    ChatMessageRequest,
+)
+from app.schemas.memory import (
+    UserMemoryCreate,
+    UserMemoryResponse,
+    UserMemoryListResponse,
 )
 
 __all__ = [
@@ -17,5 +30,14 @@ __all__ = [
     "ResetPasswordRequest",
     "TokenResponse",
     "UserResponse",
-    "MessageResponse",
+    "AuthMessageResponse",
+    "ConversationCreate",
+    "ConversationUpdate",
+    "ConversationResponse",
+    "ConversationListResponse",
+    "ChatMessageResponse",
+    "ChatMessageRequest",
+    "UserMemoryCreate",
+    "UserMemoryResponse",
+    "UserMemoryListResponse",
 ]

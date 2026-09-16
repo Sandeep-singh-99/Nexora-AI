@@ -63,6 +63,16 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    conversations: Mapped[List["Conversation"]] = relationship(
+        "Conversation",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    memories: Mapped[List["UserMemory"]] = relationship(
+        "UserMemory",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
 
 class RefreshSession(Base):
