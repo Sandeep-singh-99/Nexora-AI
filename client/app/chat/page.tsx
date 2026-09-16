@@ -1,6 +1,8 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from "react"
+import { motion } from "motion/react"
+import { MessageSquare } from "lucide-react"
 import { useAuth } from "@/components/providers/auth-provider"
 import { ChatSidebar } from "@/components/chat/chat-sidebar"
 import { ChatHeader } from "@/components/chat/chat-header"
@@ -20,6 +22,41 @@ import {
   updateConversationApi,
   addMessageApi,
 } from "@/lib/api/chat"
+
+function ChatSkeleton() {
+  return (
+    <div className="max-w-4xl mx-auto space-y-8 pb-24 pt-4 animate-pulse">
+      {/* Assistant bubble skeleton */}
+      <div className="flex w-full gap-3 my-5">
+        <div className="h-8 w-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 shrink-0" />
+        <div className="flex-1 space-y-3 max-w-2xl">
+          <div className="h-4 w-36 rounded-md bg-white/[0.08]" />
+          <div className="space-y-2 pt-1">
+            <div className="h-3.5 w-full rounded bg-white/[0.05]" />
+            <div className="h-3.5 w-5/6 rounded bg-white/[0.05]" />
+            <div className="h-3.5 w-2/3 rounded bg-white/[0.04]" />
+          </div>
+        </div>
+      </div>
+
+      {/* User bubble skeleton */}
+      <div className="flex w-full justify-end gap-3 my-5">
+        <div className="w-1/3 h-11 rounded-2xl rounded-tr-sm bg-emerald-600/15 border border-emerald-500/20" />
+        <div className="h-8 w-8 rounded-full bg-emerald-950/40 border border-emerald-500/20 shrink-0" />
+      </div>
+
+      {/* Another Assistant bubble skeleton */}
+      <div className="flex w-full gap-3 my-5">
+        <div className="h-8 w-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 shrink-0" />
+        <div className="flex-1 space-y-3 max-w-2xl">
+          <div className="h-3.5 w-4/5 rounded bg-white/[0.05]" />
+          <div className="h-28 w-full rounded-xl bg-white/[0.03] border border-white/5" />
+          <div className="h-3.5 w-1/2 rounded bg-white/[0.04]" />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function mapApiToSession(apiConv: ApiConversation): ConversationSession {
   return {
@@ -49,6 +86,9 @@ export default function ChatPage() {
   const [conversations, setConversations] = useState<ConversationSession[]>([])
   const [activeId, setActiveId] = useState<string>("")
   const [messagesMap, setMessagesMap] = useState<Record<string, ChatMessage[]>>({})
+
+  const [isConversationsLoading, setIsConversationsLoading] = useState<boolean>(true)
+  const [isMessagesLoading, setIsMessagesLoading] = useState<boolean>(false)
 
   const [input, setInput] = useState<string>("")
   const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash")
@@ -80,6 +120,7 @@ export default function ChatPage() {
   useEffect(() => {
     let isMounted = true
     async function initConversations() {
+      setIsConversationsLoading(true)
       try {
         const remoteConvs = await fetchConversationsApi()
         if (!isMounted) return
@@ -95,24 +136,38 @@ export default function ChatPage() {
         }
       } catch (err) {
         console.error("Failed to fetch conversations:", err)
+      } finally {
+        if (isMounted) {
+          setIsConversationsLoading(false)
+        }
       }
     }
 
     if (user) {
       initConversations()
+    } else if (!isAuthLoading) {
+      setIsConversationsLoading(false)
     }
 
     return () => {
       isMounted = false
     }
-  }, [user])
+  }, [user, isAuthLoading])
 
   // Fetch messages when active conversation changes
   useEffect(() => {
-    if (!activeId) return
-    if (messagesMap[activeId] && messagesMap[activeId].length > 0) return // already loaded
+    if (!activeId) {
+      setIsMessagesLoading(false)
+      return
+    }
+    if (messagesMap[activeId] && messagesMap[activeId].length > 0) {
+      setIsMessagesLoading(false)
+      return // already loaded and cached
+    }
 
     let isMounted = true
+    setIsMessagesLoading(true)
+
     async function loadMessages() {
       try {
         const msgs = await fetchConversationMessagesApi(activeId)
@@ -122,6 +177,10 @@ export default function ChatPage() {
         }
       } catch (err) {
         console.error(`Failed to load messages for conversation ${activeId}:`, err)
+      } finally {
+        if (isMounted) {
+          setIsMessagesLoading(false)
+        }
       }
     }
 
@@ -139,7 +198,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     scrollToBottom()
-  }, [activeMessages.length, isLoading])
+  }, [activeMessages.length, isLoading, isMessagesLoading])
 
   // Track scroll position for floating button
   const handleScroll = () => {
@@ -158,18 +217,13 @@ export default function ChatPage() {
   }
 
   // Handle selecting a conversation from sidebar
-  const handleSelectConversation = async (id: string) => {
+  const handleSelectConversation = (id: string) => {
+    if (id === activeId) {
+      setMobileSidebarOpen(false)
+      return
+    }
     setActiveId(id)
     setMobileSidebarOpen(false)
-    if (!messagesMap[id] || messagesMap[id].length === 0) {
-      try {
-        const msgs = await fetchConversationMessagesApi(id)
-        const formatted = msgs.map(mapApiToChatMessage)
-        setMessagesMap((prev) => ({ ...prev, [id]: formatted }))
-      } catch (err) {
-        console.error("Error loading conversation messages on click:", err)
-      }
-    }
   }
 
   // Rename Conversation
@@ -395,6 +449,7 @@ export default function ChatPage() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         isOpenMobile={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
+        isMessagesLoading={isMessagesLoading}
       />
 
       {/* Main Chat Interface */}
@@ -413,10 +468,35 @@ export default function ChatPage() {
           onScroll={handleScroll}
           className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-6 scrollbar-thin scrollbar-thumb-white/10"
         >
-          {activeMessages.length === 0 ? (
-            <EmptyState onSelectSuggestion={(promptText: string) => handleSubmitMessage(promptText)} />
+          {isConversationsLoading ? (
+            <ChatSkeleton />
+          ) : activeId === "" ? (
+            <motion.div
+              key="empty-state"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <EmptyState onSelectSuggestion={(promptText: string) => handleSubmitMessage(promptText)} />
+            </motion.div>
+          ) : isMessagesLoading ? (
+            <ChatSkeleton />
+          ) : activeMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full min-h-[45vh] text-center text-slate-400">
+              <div className="h-12 w-12 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-center mb-3 text-emerald-400 shadow-inner">
+                <MessageSquare className="h-5 w-5" />
+              </div>
+              <p className="text-sm font-semibold text-slate-200">No messages in this chat yet</p>
+              <p className="text-xs text-slate-500 mt-1 max-w-xs">Ask a question or enter a prompt below to start chatting.</p>
+            </div>
           ) : (
-            <div className="max-w-4xl mx-auto space-y-6 pb-24">
+            <motion.div
+              key={activeId}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="max-w-4xl mx-auto space-y-6 pb-24"
+            >
               {activeMessages.map((msg) => {
                 if (msg.role === "user") {
                   return <UserMessage key={msg.id} content={msg.content} />
@@ -425,7 +505,7 @@ export default function ChatPage() {
                 }
               })}
               <div ref={messagesEndRef} />
-            </div>
+            </motion.div>
           )}
         </div>
 

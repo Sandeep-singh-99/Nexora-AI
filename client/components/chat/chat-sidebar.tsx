@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import { ConversationSession } from "@/types/chat"
-import { Plus, Search, MessageSquare, Trash2, Edit3, Settings, User, Sparkles, MoreHorizontal, X } from "lucide-react"
+import { Plus, Search, MessageSquare, Trash2, Edit3, Settings, User, Sparkles, MoreHorizontal, X, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
@@ -19,6 +19,7 @@ interface ChatSidebarProps {
   onOpenSettings?: () => void
   isOpenMobile?: boolean
   onCloseMobile?: () => void
+  isMessagesLoading?: boolean
 }
 
 export function SidebarContent({
@@ -29,6 +30,7 @@ export function SidebarContent({
   onDeleteConversation,
   onRenameConversation,
   onOpenSettings,
+  isMessagesLoading,
 }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const { data: user } = useCurrentUser()
@@ -99,6 +101,7 @@ export function SidebarContent({
                   </span>
                   {items.map((item) => {
                     const isActive = item.id === activeId
+                    const isLoadingThis = isActive && isMessagesLoading
                     return (
                       <div
                         key={item.id}
@@ -110,7 +113,11 @@ export function SidebarContent({
                         }`}
                       >
                         <div className="flex items-center gap-2 overflow-hidden pr-2">
-                          <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-emerald-400" : "text-slate-500"}`} />
+                          {isLoadingThis ? (
+                            <Loader2 className="h-3.5 w-3.5 shrink-0 text-emerald-400 animate-spin" />
+                          ) : (
+                            <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-emerald-400" : "text-slate-500"}`} />
+                          )}
                           <span className="truncate">{item.title}</span>
                         </div>
 
