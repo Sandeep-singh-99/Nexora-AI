@@ -117,6 +117,28 @@ export default function ChatPage() {
   }
 
   // Load user conversations on initial render
+  // Helper to load messages for a given conversation safely
+  const loadConversationMessages = async (convId: string) => {
+    if (!convId) return
+    if (messagesMap[convId] && messagesMap[convId].length > 0) return
+
+    setIsMessagesLoading(true)
+    try {
+      const msgs = await fetchConversationMessagesApi(convId)
+      const formatted = msgs.map(mapApiToChatMessage)
+      setMessagesMap((prev) => {
+        // Never overwrite if this conversation already has active or streaming messages
+        if (prev[convId] && prev[convId].length > 0) return prev
+        return { ...prev, [convId]: formatted }
+      })
+    } catch (err) {
+      console.error(`Failed to load messages for conversation ${convId}:`, err)
+    } finally {
+      setIsMessagesLoading(false)
+    }
+  }
+
+  // Load user conversations on initial render
   useEffect(() => {
     let isMounted = true
     async function initConversations() {
@@ -128,7 +150,9 @@ export default function ChatPage() {
         if (remoteConvs.length > 0) {
           const sessions = remoteConvs.map(mapApiToSession)
           setConversations(sessions)
-          setActiveId(sessions[0].id)
+          const firstId = sessions[0].id
+          setActiveId(firstId)
+          loadConversationMessages(firstId)
         } else {
           // If no conversations exist, set activeId to blank draft state
           setConversations([])
@@ -153,43 +177,6 @@ export default function ChatPage() {
       isMounted = false
     }
   }, [user, isAuthLoading])
-
-  // Fetch messages when active conversation changes
-  useEffect(() => {
-    if (!activeId) {
-      setIsMessagesLoading(false)
-      return
-    }
-    if (messagesMap[activeId] && messagesMap[activeId].length > 0) {
-      setIsMessagesLoading(false)
-      return // already loaded and cached
-    }
-
-    let isMounted = true
-    setIsMessagesLoading(true)
-
-    async function loadMessages() {
-      try {
-        const msgs = await fetchConversationMessagesApi(activeId)
-        if (isMounted) {
-          const formatted = msgs.map(mapApiToChatMessage)
-          setMessagesMap((prev) => ({ ...prev, [activeId]: formatted }))
-        }
-      } catch (err) {
-        console.error(`Failed to load messages for conversation ${activeId}:`, err)
-      } finally {
-        if (isMounted) {
-          setIsMessagesLoading(false)
-        }
-      }
-    }
-
-    loadMessages()
-
-    return () => {
-      isMounted = false
-    }
-  }, [activeId])
 
   // Auto-scroll to bottom on message change
   const scrollToBottom = () => {
@@ -224,6 +211,10 @@ export default function ChatPage() {
     }
     setActiveId(id)
     setMobileSidebarOpen(false)
+
+    if (!messagesMap[id] || messagesMap[id].length === 0) {
+      loadConversationMessages(id)
+    }
   }
 
   // Rename Conversation
@@ -285,6 +276,17 @@ export default function ChatPage() {
       abortControllerRef.current = null
     }
     setIsLoading(false)
+    if (activeId) {
+      setMessagesMap((prev) => {
+        const currentList = prev[activeId] || []
+        const updatedList = currentList.map((msg) => ({
+          ...msg,
+          statusLabel: undefined,
+          isSearching: false,
+        }))
+        return { ...prev, [activeId]: updatedList }
+      })
+    }
   }
 
   // Submit User Message
@@ -394,6 +396,12 @@ export default function ChatPage() {
                   ...msg,
                   ui: event.ui,
                 }
+              } else if (event.type === "end") {
+                return {
+                  ...msg,
+                  statusLabel: undefined,
+                  isSearching: false,
+                }
               }
               return msg
             })
@@ -402,6 +410,20 @@ export default function ChatPage() {
         },
         controller.signal
       )
+
+      // Ensure any status badges and search indicators are cleared on completion
+      setMessagesMap((prev) => {
+        const currentList = prev[currentConvId] || []
+        const updatedList = currentList.map((msg) => {
+          if (msg.id !== assistantMsgId) return msg
+          return {
+            ...msg,
+            statusLabel: undefined,
+            isSearching: false,
+          }
+        })
+        return { ...prev, [currentConvId]: updatedList }
+      })
 
       // Persist assistant message to DB after streaming completes
       if (finalAssistantText) {
@@ -423,6 +445,7 @@ export default function ChatPage() {
                 ...msg,
                 content: "An error occurred while communicating with Nexora AI. Please try again.",
                 statusLabel: undefined,
+                isSearching: false,
               }
             }
             return msg
@@ -433,6 +456,18 @@ export default function ChatPage() {
     } finally {
       setIsLoading(false)
       abortControllerRef.current = null
+      setMessagesMap((prev) => {
+        const currentList = prev[currentConvId] || []
+        const updatedList = currentList.map((msg) => {
+          if (msg.id !== assistantMsgId) return msg
+          return {
+            ...msg,
+            statusLabel: undefined,
+            isSearching: false,
+          }
+        })
+        return { ...prev, [currentConvId]: updatedList }
+      })
     }
   }
 
@@ -470,6 +505,17 @@ export default function ChatPage() {
         >
           {isConversationsLoading ? (
             <ChatSkeleton />
+          ) : isLoading ? (
+            <div className="max-w-4xl mx-auto space-y-6 pb-24">
+              {activeMessages.map((msg) => {
+                if (msg.role === "user") {
+                  return <UserMessage key={msg.id} content={msg.content} />
+                } else {
+                  return <AssistantMessage key={msg.id} message={msg} />
+                }
+              })}
+              <div ref={messagesEndRef} />
+            </div>
           ) : activeId === "" ? (
             <motion.div
               key="empty-state"
@@ -491,7 +537,7 @@ export default function ChatPage() {
             </div>
           ) : (
             <motion.div
-              key={activeId}
+              key={activeId || "active-chat"}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, ease: "easeOut" }}

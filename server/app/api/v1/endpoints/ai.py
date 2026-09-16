@@ -115,17 +115,17 @@ async def event_generator(request: Request, message: str, thread_id: str):
                 "output_guardrail",
             ]:
                 active_node = name
-                labels = {
-                    "input_guardrail": "Evaluating safety policies...",
-                    "router": "Analyzing request intent...",
-                    "chat_agent": "Generating response...",
-                    "coding_agent": "Architecting & writing code...",
-                    "research_agent": "Conducting deep research via Tavily...",
-                    "math_agent": "Solving mathematical & symbolic operations...",
-                    "output_guardrail": "Verifying response integrity...",
-                }
-                payload = json.dumps({"type": "status", "node": name, "label": labels.get(name, "Processing...")})
-                yield f"data: {payload}\n\n"
+                if name != "output_guardrail":
+                    labels = {
+                        "input_guardrail": "Evaluating safety policies...",
+                        "router": "Analyzing request intent...",
+                        "chat_agent": "Generating response...",
+                        "coding_agent": "Architecting & writing code...",
+                        "research_agent": "Conducting deep research via Tavily...",
+                        "math_agent": "Solving mathematical & symbolic operations...",
+                    }
+                    payload = json.dumps({"type": "status", "node": name, "label": labels.get(name, "Processing...")})
+                    yield f"data: {payload}\n\n"
 
             # 2. Tavily Web Search Tool Invocation Start & End
             elif kind == "on_tool_start" and ("search" in name.lower() or "tavily" in name.lower()):

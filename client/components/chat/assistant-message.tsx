@@ -77,7 +77,7 @@ function CodeBlock({ language, value }: { language: string; value: string }) {
 
 export function AssistantMessage({ message, onRegenerate }: AssistantMessageProps) {
   const showThinking = Boolean(
-    message.thinkingTime || message.thinkingText || message.isSearching || (message.searchResults && message.searchResults.length > 0)
+    message.thinkingText || message.isSearching || (message.searchResults && message.searchResults.length > 0)
   )
 
   return (
