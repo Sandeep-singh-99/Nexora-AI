@@ -3,6 +3,8 @@
 import React, { useState } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+import remarkMath from "remark-math"
+import rehypeKatex from "rehype-katex"
 import { ChatMessage } from "@/types/chat"
 import { GenerativeUIRenderer } from "./generative-ui"
 import { AIThinking } from "./ai-thinking"
@@ -12,6 +14,20 @@ import { Sparkles, Copy, Check, Terminal } from "lucide-react"
 interface AssistantMessageProps {
   message: ChatMessage
   onRegenerate?: () => void
+}
+
+function preprocessLaTeX(content: string): string {
+  if (!content) return ""
+
+  return content
+    // Convert display math delimiters \[ ... \] -> $$ ... $$
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_, eq) => `\n$$\n${eq.trim()}\n$$\n`)
+    // Convert inline math delimiters \( ... \) -> $ ... $
+    .replace(/\\\(([\s\S]*?)\\\)/g, (_, eq) => `$${eq.trim()}$`)
+    // Convert bracketed single lines [ equation ] into $$ equation $$ if math characters present
+    .replace(/(^|\n)\[\s*([^\[\]\n\(\)]*?(?:\\boxed|\\Rightarrow|\\pm|=|\\quad|\^|_|\+|-|\*|\/|\\cdot)[^\[\]\n]*?)\s*\](?=\n|$)/g,
+      (_, p1, eq) => `${p1}\n$$\n${eq.trim()}\n$$\n`
+    )
 }
 
 function CodeBlock({ language, value }: { language: string; value: string }) {
@@ -94,7 +110,8 @@ export function AssistantMessage({ message, onRegenerate }: AssistantMessageProp
         {message.content && (
           <div className="prose prose-invert max-w-none text-sm text-slate-200 leading-relaxed font-sans">
             <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeKatex]}
               components={{
                 code({ node, className, children, ...props }: any) {
                   const match = /language-(\w+)/.exec(className || "")
@@ -137,7 +154,7 @@ export function AssistantMessage({ message, onRegenerate }: AssistantMessageProp
                 td: ({ children }) => <td className="p-2.5 border-t border-white/5">{children}</td>,
               }}
             >
-              {message.content}
+              {preprocessLaTeX(message.content)}
             </ReactMarkdown>
           </div>
         )}

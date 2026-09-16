@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Sparkles, BarChart3, Code2, BookOpen, Rocket } from "lucide-react"
+import { Sparkles, BarChart3, Code2, Calculator, Rocket } from "lucide-react"
 
 interface EmptyStateProps {
   onSelectSuggestion: (text: string) => void
@@ -9,10 +9,10 @@ interface EmptyStateProps {
 
 const SUGGESTIONS = [
   {
-    icon: BarChart3,
-    title: "Analyze data",
-    prompt: "Show me my monthly revenue.",
-    description: "Generate metrics, charts, & dynamic financial insights",
+    icon: Calculator,
+    title: "Solve math & algebra",
+    prompt: "Factor x^2 + 5x + 6 and calculate derivative of sin(x)*x^2",
+    description: "Symbolic algebra, calculus, matrices & statistics",
   },
   {
     icon: Code2,
@@ -21,10 +21,10 @@ const SUGGESTIONS = [
     description: "Build clean, production-ready backend code",
   },
   {
-    icon: BookOpen,
-    title: "Explain something",
-    prompt: "Explain how LangGraph state machines work with Gemini 2.5.",
-    description: "Deep dive into architecture & agent workflows",
+    icon: BarChart3,
+    title: "Analyze data",
+    prompt: "Show me my monthly revenue.",
+    description: "Generate metrics, charts, & dynamic financial insights",
   },
   {
     icon: Rocket,

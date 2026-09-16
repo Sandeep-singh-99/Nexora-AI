@@ -11,6 +11,7 @@ from app.ai.agents.router import router_node
 from app.ai.agents.chat_agent import chat_agent
 from app.ai.agents.coding_agent import coding_agent
 from app.ai.agents.research_agent import research_agent
+from app.ai.agents.math_agent import math_agent
 
 
 def guardrail_check(state: AgentState) -> str:
@@ -34,6 +35,7 @@ builder.add_node("router", router_node)
 builder.add_node("chat_agent", chat_agent)
 builder.add_node("coding_agent", coding_agent)
 builder.add_node("research_agent", research_agent)
+builder.add_node("math_agent", math_agent)
 builder.add_node("output_guardrail", output_guardrail_node)
 
 # 2. Graph Pipeline Edges
@@ -60,6 +62,7 @@ builder.add_conditional_edges(
         "chat_agent": "chat_agent",
         "coding_agent": "coding_agent",
         "research_agent": "research_agent",
+        "math_agent": "math_agent",
     },
 )
 
@@ -67,6 +70,7 @@ builder.add_conditional_edges(
 builder.add_edge("chat_agent", "output_guardrail")
 builder.add_edge("coding_agent", "output_guardrail")
 builder.add_edge("research_agent", "output_guardrail")
+builder.add_edge("math_agent", "output_guardrail")
 
 builder.add_edge("output_guardrail", END)
 

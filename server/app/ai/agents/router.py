@@ -6,7 +6,7 @@ from app.ai.core.state import AgentState, get_trimmed_messages
 
 
 class RouteDecision(BaseModel):
-    next_step: Literal["chat_agent", "coding_agent", "research_agent"] = Field(
+    next_step: Literal["chat_agent", "coding_agent", "research_agent", "math_agent"] = Field(
         description="The target agent node to handle the request."
     )
 
@@ -19,7 +19,8 @@ router_agent = create_agent(
         "- chat_agent: General conversation, greetings, simple Q&A, "
         "everyday questions, and ALL current time/date queries (e.g., 'What time is it in New Delhi?').\n"
         "- coding_agent: Programming, debugging, software architecture, code generation.\n"
-        "- research_agent: Deep research, web search, external news, and in-depth factual topics (excluding time/date queries)."
+        "- research_agent: Deep research, web search, external news, and in-depth factual topics (excluding time/date queries).\n"
+        "- math_agent: Mathematical equations, algebra, calculus (derivatives, integrals, limits), matrix calculations, factorization, simplification, statistics, and symbolic computations."
     ),
     response_format=RouteDecision,
 )

@@ -7,6 +7,8 @@ import { DataTable } from "./generative/data-table"
 import { InfoCard } from "./generative/info-card"
 import { SearchResults } from "./generative/search-results"
 import { ProjectCard } from "./generative/project-card"
+import { TimeCard } from "./generative/time-card"
+import { MathCard } from "./generative/math-card"
 import { AlertCircle } from "lucide-react"
 
 // Explicit safe component registry map
@@ -16,6 +18,10 @@ const componentRegistry: Record<string, React.ComponentType<any>> = {
   card: InfoCard,
   search_results: SearchResults,
   project: ProjectCard,
+  time: TimeCard,
+  time_card: TimeCard,
+  math: MathCard,
+  math_card: MathCard,
 }
 
 interface GenerativeUIRendererProps {

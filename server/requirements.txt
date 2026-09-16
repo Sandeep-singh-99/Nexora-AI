@@ -284,3 +284,6 @@ yarl==1.24.5
     # via aiohttp
 zstandard==0.25.0
     # via langsmith
+sympy>=1.13.0
+scipy>=1.12.0
+
