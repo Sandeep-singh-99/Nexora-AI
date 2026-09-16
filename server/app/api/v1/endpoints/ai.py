@@ -91,6 +91,7 @@ async def event_generator(request: Request, message: str, thread_id: str):
     input_data = {"messages": [HumanMessage(content=message)]}
 
     active_search_query = ""
+    active_node = ""
 
     try:
         # Stream events from LangGraph
@@ -113,6 +114,7 @@ async def event_generator(request: Request, message: str, thread_id: str):
                 "math_agent",
                 "output_guardrail",
             ]:
+                active_node = name
                 labels = {
                     "input_guardrail": "Evaluating safety policies...",
                     "router": "Analyzing request intent...",
@@ -218,8 +220,13 @@ async def event_generator(request: Request, message: str, thread_id: str):
                 except Exception:
                     pass
 
-            # 3. LLM Thinking & Reasoning Tokens
-            elif kind == "on_chat_model_stream":
+            # 3. LLM Thinking & Reasoning Tokens (Only for responder agents)
+            elif kind == "on_chat_model_stream" and active_node in [
+                "chat_agent",
+                "coding_agent",
+                "research_agent",
+                "math_agent",
+            ]:
                 chunk = event["data"]["chunk"]
                 
                 additional_kwargs = getattr(chunk, "additional_kwargs", {})

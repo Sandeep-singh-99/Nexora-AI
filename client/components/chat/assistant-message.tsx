@@ -19,7 +19,10 @@ interface AssistantMessageProps {
 function preprocessLaTeX(content: string): string {
   if (!content) return ""
 
-  return content
+  // Convert literal escaped "\\n" to real newlines "\n" if present from database storage
+  let processed = typeof content === "string" ? content.replace(/\\n/g, "\n") : String(content)
+
+  return processed
     // Convert display math delimiters \[ ... \] -> $$ ... $$
     .replace(/\\\[([\s\S]*?)\\\]/g, (_, eq) => `\n$$\n${eq.trim()}\n$$\n`)
     // Convert inline math delimiters \( ... \) -> $ ... $
@@ -130,6 +133,14 @@ export function AssistantMessage({ message, onRegenerate }: AssistantMessageProp
                 h1: ({ children }) => <h1 className="text-xl font-bold text-white mt-4 mb-2">{children}</h1>,
                 h2: ({ children }) => <h2 className="text-lg font-semibold text-white mt-3 mb-2">{children}</h2>,
                 h3: ({ children }) => <h3 className="text-base font-semibold text-slate-100 mt-3 mb-1">{children}</h3>,
+                h4: ({ children }) => <h4 className="text-sm font-semibold text-slate-200 mt-2 mb-1">{children}</h4>,
+                h5: ({ children }) => <h5 className="text-xs font-semibold text-slate-300 mt-2 mb-1 uppercase tracking-wider">{children}</h5>,
+                h6: ({ children }) => <h6 className="text-xs font-semibold text-slate-400 mt-1 mb-1">{children}</h6>,
+                strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+                b: ({ children }) => <b className="font-semibold text-white">{children}</b>,
+                em: ({ children }) => <em className="italic text-slate-300">{children}</em>,
+                hr: () => <hr className="my-4 border-white/10" />,
+                del: ({ children }) => <del className="line-through text-slate-400">{children}</del>,
                 p: ({ children }) => <p className="mb-2.5 last:mb-0 leading-relaxed">{children}</p>,
                 ul: ({ children }) => <ul className="list-disc pl-5 my-2 space-y-1">{children}</ul>,
                 ol: ({ children }) => <ol className="list-decimal pl-5 my-2 space-y-1">{children}</ol>,
@@ -145,13 +156,15 @@ export function AssistantMessage({ message, onRegenerate }: AssistantMessageProp
                   </a>
                 ),
                 table: ({ children }) => (
-                  <div className="overflow-x-auto my-3 rounded-xl border border-white/10">
-                    <table className="w-full text-xs text-slate-200">{children}</table>
+                  <div className="overflow-x-auto my-3 rounded-xl border border-white/10 shadow-lg">
+                    <table className="w-full text-xs text-slate-200 border-collapse">{children}</table>
                   </div>
                 ),
-                thead: ({ children }) => <thead className="bg-white/[0.05] border-b border-white/10">{children}</thead>,
-                th: ({ children }) => <th className="p-2.5 text-left font-semibold text-slate-300">{children}</th>,
-                td: ({ children }) => <td className="p-2.5 border-t border-white/5">{children}</td>,
+                thead: ({ children }) => <thead className="bg-white/[0.06] border-b border-white/10 font-semibold">{children}</thead>,
+                tbody: ({ children }) => <tbody className="divide-y divide-white/5">{children}</tbody>,
+                tr: ({ children }) => <tr className="hover:bg-white/[0.02] transition-colors">{children}</tr>,
+                th: ({ children }) => <th className="p-2.5 text-left font-semibold text-slate-200">{children}</th>,
+                td: ({ children }) => <td className="p-2.5">{children}</td>,
               }}
             >
               {preprocessLaTeX(message.content)}

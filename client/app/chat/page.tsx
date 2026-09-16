@@ -294,12 +294,19 @@ export default function ChatPage() {
 
     const startTime = Date.now()
     let finalAssistantText = ""
+    let accumulatedThinking = ""
 
     try {
       await sendStreamingChatMessageApi(
         { message: textToSend, thread_id: currentConvId },
         (event) => {
           const durationSeconds = ((Date.now() - startTime) / 1000).toFixed(1)
+
+          if (event.type === "token") {
+            finalAssistantText += event.content
+          } else if (event.type === "thinking") {
+            accumulatedThinking += event.content
+          }
 
           setMessagesMap((prev) => {
             const currentList = prev[currentConvId] || []
@@ -318,14 +325,13 @@ export default function ChatPage() {
               } else if (event.type === "thinking") {
                 return {
                   ...msg,
-                  thinkingText: (msg.thinkingText || "") + event.content,
+                  thinkingText: accumulatedThinking,
                   thinkingTime: `${durationSeconds}s`,
                 }
               } else if (event.type === "token") {
-                finalAssistantText += event.content
                 return {
                   ...msg,
-                  content: msg.content + event.content,
+                  content: finalAssistantText,
                   statusLabel: undefined,
                   thinkingTime: `${durationSeconds}s`,
                 }
