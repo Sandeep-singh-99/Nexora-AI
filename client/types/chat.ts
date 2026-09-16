@@ -32,6 +32,8 @@ export type ConversationSession = {
   preview: string;
   model: string;
   category: "Today" | "Yesterday" | "Previous 7 Days";
+  isPinned?: boolean;
+  isArchived?: boolean;
 };
 
 export type AIModelOption = {
@@ -42,3 +44,28 @@ export type AIModelOption = {
   description: string;
   icon?: string;
 };
+
+export interface ApiMessage {
+  id: string;
+  conversation_id: string;
+  role: string;
+  content: string;
+  tokens_used?: number;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface ApiConversation {
+  id: string;
+  user_id: string;
+  title: string;
+  is_pinned: boolean;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+  messages?: ApiMessage[];
+}
+
+export interface ApiConversationListResponse {
+  conversations: ApiConversation[];
+}

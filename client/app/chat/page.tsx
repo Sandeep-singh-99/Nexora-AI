@@ -10,130 +10,48 @@ import { EmptyState } from "@/components/chat/empty-state"
 import { ChatInput } from "@/components/chat/chat-input"
 import { ScrollToBottom } from "@/components/chat/scroll-to-bottom"
 import { SettingsDialog } from "@/components/chat/settings-dialog"
-import { ChatMessage, ConversationSession } from "@/types/chat"
+import { ChatMessage, ConversationSession, ApiConversation, ApiMessage } from "@/types/chat"
 import { sendStreamingChatMessageApi } from "@/lib/api/ai"
+import {
+  fetchConversationsApi,
+  createConversationApi,
+  fetchConversationMessagesApi,
+  deleteConversationApi,
+  updateConversationApi,
+  addMessageApi,
+} from "@/lib/api/chat"
 
-const INITIAL_CONVERSATIONS: ConversationSession[] = [
-  {
-    id: "conv-1",
-    title: "Monthly Revenue Analytics",
-    updatedAt: "Just now",
-    preview: "Show me my monthly revenue.",
-    model: "llama-3.3-70b-versatile",
-    category: "Today",
-  },
-  {
-    id: "conv-2",
-    title: "Recent User Transactions",
-    updatedAt: "1 hour ago",
-    preview: "Show my recent transactions.",
+function mapApiToSession(apiConv: ApiConversation): ConversationSession {
+  return {
+    id: apiConv.id,
+    title: apiConv.title,
+    updatedAt: new Date(apiConv.updated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    preview: "Chat session",
     model: "gemini-2.5-flash",
     category: "Today",
-  },
-  {
-    id: "conv-3",
-    title: "ClassBuddy Project Summary",
-    updatedAt: "Yesterday",
-    preview: "Show me my project overview.",
-    model: "gemini-2.5-pro",
-    category: "Yesterday",
-  },
-]
+    isPinned: apiConv.is_pinned,
+    isArchived: apiConv.is_archived,
+  }
+}
 
-const INITIAL_MESSAGES_MAP: Record<string, ChatMessage[]> = {
-  "conv-1": [
-    {
-      id: "msg-1-1",
-      role: "user",
-      content: "Show me my monthly revenue.",
-      createdAt: new Date(),
-    },
-    {
-      id: "msg-1-2",
-      role: "assistant",
-      content: "Your monthly revenue reached **$24,580** in September, representing an **+18.4% increase** compared to last month. Here is your detailed revenue breakdown chart:",
-      thinkingTime: "1.8s",
-      createdAt: new Date(),
-      ui: {
-        type: "chart",
-        props: {
-          title: "September 2026 Monthly Revenue Breakdown",
-          description: "Revenue performance across main subscription tiers.",
-          totalAmount: "$24,580",
-          growthRate: "+18.4%",
-          data: [
-            { name: "Pro Tier ($49/mo)", value: 12400 },
-            { name: "Enterprise ($499/mo)", value: 8500 },
-            { name: "Starter ($19/mo)", value: 3680 },
-          ],
-        },
-      },
-    },
-  ],
-  "conv-2": [
-    {
-      id: "msg-2-1",
-      role: "user",
-      content: "Show my recent transactions.",
-      createdAt: new Date(),
-    },
-    {
-      id: "msg-2-2",
-      role: "assistant",
-      content: "Here are the 4 most recent user transactions processed in your workspace:",
-      thinkingTime: "1.2s",
-      createdAt: new Date(),
-      ui: {
-        type: "table",
-        props: {
-          title: "Recent Workspaces Transactions",
-          rows: [
-            { id: "TX-9021", user: "Acme Corp", amount: "$1,490.00", status: "Completed", date: "Sep 14, 2026" },
-            { id: "TX-9022", user: "DevStudio Inc", amount: "$490.00", status: "Completed", date: "Sep 14, 2026" },
-            { id: "TX-9023", user: "SaaSify Co", amount: "$99.00", status: "Pending", date: "Sep 15, 2026" },
-            { id: "TX-9024", user: "John Doe", amount: "$29.00", status: "Completed", date: "Sep 15, 2026" },
-          ],
-        },
-      },
-    },
-  ],
-  "conv-3": [
-    {
-      id: "msg-3-1",
-      role: "user",
-      content: "Show me my project overview.",
-      createdAt: new Date(),
-    },
-    {
-      id: "msg-3-2",
-      role: "assistant",
-      content: "Here is your active project card summary:",
-      thinkingTime: "1.0s",
-      createdAt: new Date(),
-      ui: {
-        type: "project",
-        props: {
-          title: "ClassBuddy AI Platform",
-          status: "In Progress",
-          progress: 78,
-          membersCount: 6,
-          updatedDate: "Sep 14, 2026",
-          tags: ["Next.js 15", "FastAPI", "LangGraph", "PostgreSQL"],
-        },
-      },
-    },
-  ],
+function mapApiToChatMessage(apiMsg: ApiMessage): ChatMessage {
+  return {
+    id: apiMsg.id,
+    role: apiMsg.role as "user" | "assistant",
+    content: apiMsg.content,
+    createdAt: new Date(apiMsg.created_at),
+  }
 }
 
 export default function ChatPage() {
   const { user, isLoading: isAuthLoading } = useAuth()
 
-  const [conversations, setConversations] = useState<ConversationSession[]>(INITIAL_CONVERSATIONS)
-  const [activeId, setActiveId] = useState<string>("conv-1")
-  const [messagesMap, setMessagesMap] = useState<Record<string, ChatMessage[]>>(INITIAL_MESSAGES_MAP)
+  const [conversations, setConversations] = useState<ConversationSession[]>([])
+  const [activeId, setActiveId] = useState<string>("")
+  const [messagesMap, setMessagesMap] = useState<Record<string, ChatMessage[]>>({})
 
   const [input, setInput] = useState<string>("")
-  const [selectedModel, setSelectedModel] = useState<string>("llama-3.3-70b-versatile")
+  const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash")
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false)
   const [showScrollBottom, setShowScrollBottom] = useState<boolean>(false)
@@ -143,7 +61,76 @@ export default function ChatPage() {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  const activeMessages = messagesMap[activeId] || []
+  const activeMessages = activeId ? messagesMap[activeId] || [] : []
+
+  // Refresh conversation list from backend
+  const refreshConversations = async () => {
+    try {
+      const remoteConvs = await fetchConversationsApi()
+      const sessions = remoteConvs.map(mapApiToSession)
+      setConversations(sessions)
+      return sessions
+    } catch (err) {
+      console.error("Failed to refresh conversations:", err)
+      return []
+    }
+  }
+
+  // Load user conversations on initial render
+  useEffect(() => {
+    let isMounted = true
+    async function initConversations() {
+      try {
+        const remoteConvs = await fetchConversationsApi()
+        if (!isMounted) return
+
+        if (remoteConvs.length > 0) {
+          const sessions = remoteConvs.map(mapApiToSession)
+          setConversations(sessions)
+          setActiveId(sessions[0].id)
+        } else {
+          // If no conversations exist, set activeId to blank draft state
+          setConversations([])
+          setActiveId("")
+        }
+      } catch (err) {
+        console.error("Failed to fetch conversations:", err)
+      }
+    }
+
+    if (user) {
+      initConversations()
+    }
+
+    return () => {
+      isMounted = false
+    }
+  }, [user])
+
+  // Fetch messages when active conversation changes
+  useEffect(() => {
+    if (!activeId) return
+    if (messagesMap[activeId] && messagesMap[activeId].length > 0) return // already loaded
+
+    let isMounted = true
+    async function loadMessages() {
+      try {
+        const msgs = await fetchConversationMessagesApi(activeId)
+        if (isMounted) {
+          const formatted = msgs.map(mapApiToChatMessage)
+          setMessagesMap((prev) => ({ ...prev, [activeId]: formatted }))
+        }
+      } catch (err) {
+        console.error(`Failed to load messages for conversation ${activeId}:`, err)
+      }
+    }
+
+    loadMessages()
+
+    return () => {
+      isMounted = false
+    }
+  }, [activeId])
 
   // Auto-scroll to bottom on message change
   const scrollToBottom = () => {
@@ -163,34 +150,74 @@ export default function ChatPage() {
     }
   }
 
-  // Create New Chat
+  // Handle New Chat (Switch to fresh blank draft state without creating empty DB rows)
   const handleNewChat = () => {
-    const newId = `conv-${Date.now()}`
-    const newSession: ConversationSession = {
-      id: newId,
-      title: "New Chat",
-      updatedAt: "Just now",
-      preview: "Empty conversation",
-      model: selectedModel,
-      category: "Today",
-    }
-    setConversations([newSession, ...conversations])
-    setMessagesMap({ ...messagesMap, [newId]: [] })
-    setActiveId(newId)
+    setActiveId("")
+    setInput("")
     setMobileSidebarOpen(false)
   }
 
-  // Delete Single Conversation
-  const handleDeleteConversation = (id: string) => {
-    const nextConvs = conversations.filter((c) => c.id !== id)
-    setConversations(nextConvs)
-    if (activeId === id && nextConvs.length > 0) {
-      setActiveId(nextConvs[0].id)
+  // Handle selecting a conversation from sidebar
+  const handleSelectConversation = async (id: string) => {
+    setActiveId(id)
+    setMobileSidebarOpen(false)
+    if (!messagesMap[id] || messagesMap[id].length === 0) {
+      try {
+        const msgs = await fetchConversationMessagesApi(id)
+        const formatted = msgs.map(mapApiToChatMessage)
+        setMessagesMap((prev) => ({ ...prev, [id]: formatted }))
+      } catch (err) {
+        console.error("Error loading conversation messages on click:", err)
+      }
     }
   }
 
-  // Delete All Conversations (Data Control)
-  const handleDeleteAllConversations = () => {
+  // Rename Conversation
+  const handleRenameConversation = async (id: string, newTitle: string) => {
+    try {
+      await updateConversationApi(id, { title: newTitle })
+      setConversations((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, title: newTitle } : c))
+      )
+    } catch (err) {
+      console.error("Failed to rename conversation:", err)
+    }
+  }
+
+  // Delete Single Conversation
+  const handleDeleteConversation = async (id: string) => {
+    try {
+      await deleteConversationApi(id)
+      const nextConvs = conversations.filter((c) => c.id !== id)
+      setConversations(nextConvs)
+
+      setMessagesMap((prev) => {
+        const nextMap = { ...prev }
+        delete nextMap[id]
+        return nextMap
+      })
+
+      if (activeId === id) {
+        if (nextConvs.length > 0) {
+          setActiveId(nextConvs[0].id)
+        } else {
+          setActiveId("")
+        }
+      }
+    } catch (err) {
+      console.error("Failed to delete conversation:", err)
+    }
+  }
+
+  // Delete All Conversations
+  const handleDeleteAllConversations = async () => {
+    for (const conv of conversations) {
+      try {
+        await deleteConversationApi(conv.id)
+      } catch (e) {
+        console.error(`Failed to delete conversation ${conv.id}:`, e)
+      }
+    }
     setConversations([])
     setMessagesMap({})
     setActiveId("")
@@ -210,6 +237,23 @@ export default function ChatPage() {
   const handleSubmitMessage = async (customPrompt?: string) => {
     const textToSend = customPrompt || input
     if (!textToSend.trim() || isLoading) return
+
+    let currentConvId = activeId
+
+    // If draft mode (no active conversation), create conversation in DB now
+    if (!currentConvId) {
+      try {
+        const titleSnippet = textToSend.slice(0, 30) + (textToSend.length > 30 ? "..." : "")
+        const created = await createConversationApi(titleSnippet)
+        const session = mapApiToSession(created)
+        setConversations((prev) => [session, ...prev])
+        setActiveId(session.id)
+        currentConvId = session.id
+      } catch (err) {
+        console.error("Failed to create conversation on message submit:", err)
+        return
+      }
+    }
 
     // Cancel any previous stream
     if (abortControllerRef.current) {
@@ -237,28 +281,28 @@ export default function ChatPage() {
 
     setMessagesMap((prev) => ({
       ...prev,
-      [activeId]: [...(prev[activeId] || []), userMsg, initialAssistantMsg],
+      [currentConvId]: [...(prev[currentConvId] || []), userMsg, initialAssistantMsg],
     }))
 
     setInput("")
     setIsLoading(true)
 
-    // Update conversation title if it was new chat
-    const currentConv = conversations.find((c) => c.id === activeId)
-    if (currentConv && currentConv.title === "New Chat") {
-      currentConv.title = textToSend.slice(0, 30) + (textToSend.length > 30 ? "..." : "")
-    }
+    // Save user message to backend DB asynchronously
+    addMessageApi(currentConvId, textToSend, "user").catch((err) =>
+      console.error("Failed to persist user message:", err)
+    )
 
     const startTime = Date.now()
+    let finalAssistantText = ""
 
     try {
       await sendStreamingChatMessageApi(
-        { message: textToSend, thread_id: activeId },
+        { message: textToSend, thread_id: currentConvId },
         (event) => {
           const durationSeconds = ((Date.now() - startTime) / 1000).toFixed(1)
 
           setMessagesMap((prev) => {
-            const currentList = prev[activeId] || []
+            const currentList = prev[currentConvId] || []
             const updatedList = currentList.map((msg) => {
               if (msg.id !== assistantMsgId) return msg
 
@@ -278,166 +322,125 @@ export default function ChatPage() {
                   thinkingTime: `${durationSeconds}s`,
                 }
               } else if (event.type === "token") {
+                finalAssistantText += event.content
                 return {
                   ...msg,
                   content: msg.content + event.content,
-                  thinkingTime: `${durationSeconds}s`,
                   statusLabel: undefined,
+                  thinkingTime: `${durationSeconds}s`,
                 }
               } else if (event.type === "ui") {
                 return {
                   ...msg,
-                  ui: event.ui || (event as any).component,
+                  ui: event.ui,
                 }
-              } else if (event.type === "end") {
-                return { ...msg, statusLabel: undefined }
               }
               return msg
             })
-            return { ...prev, [activeId]: updatedList }
+            return { ...prev, [currentConvId]: updatedList }
           })
         },
         controller.signal
       )
-    } catch (error: any) {
-      if (error.name === "AbortError") {
-        console.log("Stream stopped by user abort signal.")
+
+      // Persist assistant message to DB after streaming completes
+      if (finalAssistantText) {
+        await addMessageApi(currentConvId, finalAssistantText, "assistant").catch((err) =>
+          console.error("Failed to persist assistant message:", err)
+        )
+      }
+
+      // Re-sync conversation list from backend so titles & timestamps update
+      await refreshConversations()
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        console.error("Chat error:", err)
         setMessagesMap((prev) => {
-          const currentList = prev[activeId] || []
+          const currentList = prev[currentConvId] || []
           const updatedList = currentList.map((msg) => {
-            if (msg.id !== assistantMsgId) return msg
-            return {
-              ...msg,
-              statusLabel: undefined,
-              content: msg.content ? msg.content + " *(Stopped)*" : "*(Response stopped by user)*",
+            if (msg.id === assistantMsgId) {
+              return {
+                ...msg,
+                content: "An error occurred while communicating with Nexora AI. Please try again.",
+                statusLabel: undefined,
+              }
             }
+            return msg
           })
-          return { ...prev, [activeId]: updatedList }
+          return { ...prev, [currentConvId]: updatedList }
         })
-        return
       }
-
-      console.error("AI Chat API Error:", error)
-      let displayError = "⚠️ **Connection Error**: Unable to connect to the backend server `/api/v1/ai/chat/stream`. Please make sure your FastAPI backend server is running on `http://localhost:8000`."
-
-      if (error && typeof error === "object") {
-        const detail = error.detail || error
-        if (typeof detail === "object" && detail !== null) {
-          if (detail.code === "CONTENT_BLOCKED") {
-            displayError = `🛡️ **Content Blocked**: ${detail.message || "Your message was flagged by safety guardrails and could not be processed."}`
-          } else if (detail.message) {
-            displayError = `⚠️ **Error**: ${detail.message}`
-          }
-        } else if (typeof detail === "string") {
-          displayError = `⚠️ **Error**: ${detail}`
-        }
-      }
-
-      setMessagesMap((prev) => {
-        const currentList = prev[activeId] || []
-        const updatedList = currentList.map((msg) => {
-          if (msg.id !== assistantMsgId) return msg
-          return { ...msg, content: displayError, statusLabel: undefined }
-        })
-        return { ...prev, [activeId]: updatedList }
-      })
     } finally {
       setIsLoading(false)
       abortControllerRef.current = null
     }
   }
 
-  if (isAuthLoading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#05070B] text-slate-100 font-sans">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-          <p className="text-xs font-mono text-slate-400">Verifying authentication...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return null
-  }
-
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#05070B] text-slate-100 font-sans">
-      {/* Sidebar */}
+    <div className="flex h-screen w-full overflow-hidden bg-[#0A0F18] text-slate-100 font-sans">
+      {/* Sidebar Component */}
       <ChatSidebar
         conversations={conversations}
         activeId={activeId}
-        onSelectConversation={setActiveId}
+        onSelectConversation={handleSelectConversation}
         onNewChat={handleNewChat}
         onDeleteConversation={handleDeleteConversation}
+        onRenameConversation={handleRenameConversation}
         onOpenSettings={() => setIsSettingsOpen(true)}
         isOpenMobile={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
       />
 
-      {/* Main Workspace */}
+      {/* Main Chat Interface */}
       <div className="flex flex-1 flex-col h-full overflow-hidden relative">
-        {/* Header */}
+        {/* Fixed Header */}
         <ChatHeader
-          onToggleMobileSidebar={() => setMobileSidebarOpen(true)}
-          onNewChat={handleNewChat}
           selectedModel={selectedModel}
           setSelectedModel={setSelectedModel}
+          onToggleMobileSidebar={() => setMobileSidebarOpen(true)}
+          onNewChat={handleNewChat}
         />
 
-        {/* Scrollable Message Container */}
+        {/* Scrollable Messages Area */}
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-4 py-6 md:px-8 space-y-4 max-w-4xl w-full mx-auto scrollbar-thin"
+          className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-6 scrollbar-thin scrollbar-thumb-white/10"
         >
           {activeMessages.length === 0 ? (
-            <EmptyState onSelectSuggestion={(promptText) => handleSubmitMessage(promptText)} />
+            <EmptyState onSelectSuggestion={(promptText: string) => handleSubmitMessage(promptText)} />
           ) : (
-            activeMessages.map((msg) => (
-              <React.Fragment key={msg.id}>
-                {msg.role === "user" ? (
-                  <UserMessage content={msg.content} />
-                ) : (
-                  <AssistantMessage
-                    message={msg}
-                    onRegenerate={() => handleSubmitMessage(msg.content)}
-                  />
-                )}
-              </React.Fragment>
-            ))
-          )}
-
-          {/* Loading indicator */}
-          {isLoading && (
-            <div className="flex items-center gap-3 my-4 animate-pulse">
-              <div className="h-8 w-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xs font-mono">
-                ✦
-              </div>
-              <span className="text-xs text-slate-400 font-mono">
-                Nexora AI is processing response...
-              </span>
+            <div className="max-w-4xl mx-auto space-y-6 pb-24">
+              {activeMessages.map((msg) => {
+                if (msg.role === "user") {
+                  return <UserMessage key={msg.id} content={msg.content} />
+                } else {
+                  return <AssistantMessage key={msg.id} message={msg} />
+                }
+              })}
+              <div ref={messagesEndRef} />
             </div>
           )}
-
-          <div ref={messagesEndRef} />
         </div>
 
-        {/* Scroll To Bottom Floating Trigger */}
-        <ScrollToBottom onClick={scrollToBottom} visible={showScrollBottom} />
+        {/* Floating Scroll to Bottom Button */}
+        {showScrollBottom && <ScrollToBottom onClick={scrollToBottom} />}
 
-        {/* Composer Input Area */}
-        <ChatInput
-          input={input}
-          setInput={setInput}
-          onSubmit={() => handleSubmitMessage()}
-          isLoading={isLoading}
-          onStop={handleStopGeneration}
-        />
+        {/* Floating Chat Input Bar */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-[#0A0F18] via-[#0A0F18]/90 to-transparent pointer-events-none">
+          <div className="max-w-4xl mx-auto pointer-events-auto">
+            <ChatInput
+              input={input}
+              setInput={setInput}
+              isLoading={isLoading}
+              onSubmit={() => handleSubmitMessage()}
+              onStop={handleStopGeneration}
+            />
+          </div>
+        </div>
       </div>
 
-      {/* ChatGPT-style Settings Dialog Modal */}
+      {/* Settings & Personalization Dialog */}
       <SettingsDialog
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}

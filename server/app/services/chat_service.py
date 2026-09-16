@@ -6,7 +6,7 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.chat_memory import Conversation, Message
+from app.models.chat_memory import Conversation, Message, utc_now
 
 
 class ChatService:
@@ -25,6 +25,7 @@ class ChatService:
         db.add(conversation)
         await db.commit()
         await db.refresh(conversation)
+        conversation.messages = []
         return conversation
 
     @staticmethod
@@ -38,7 +39,11 @@ class ChatService:
         """Fetch all conversations for a user ordered by pinned status and updated_at."""
         stmt = (
             select(Conversation)
-            .where(Conversation.user_id == user_id, Conversation.is_archived == False)
+            .where(
+                Conversation.user_id == user_id,
+                Conversation.is_archived == False,
+                Conversation.messages.any(),
+            )
             .order_by(Conversation.is_pinned.desc(), Conversation.updated_at.desc())
             .offset(offset)
             .limit(limit)
@@ -118,12 +123,14 @@ class ChatService:
         extra_metadata: Optional[Dict[str, Any]] = None,
     ) -> Message:
         """Add a new message to a conversation thread."""
+        now = utc_now()
         message = Message(
             conversation_id=conversation_id,
             role=role,
             content=content,
             tokens_used=tokens_used,
             extra_metadata=extra_metadata,
+            created_at=now,
         )
         db.add(message)
         
@@ -131,7 +138,7 @@ class ChatService:
         stmt = (
             update(Conversation)
             .where(Conversation.id == conversation_id)
-            .values(updated_at=message.created_at)
+            .values(updated_at=now)
         )
         await db.execute(stmt)
         await db.commit()

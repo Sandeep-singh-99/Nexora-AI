@@ -27,6 +27,7 @@ export function SidebarContent({
   onSelectConversation,
   onNewChat,
   onDeleteConversation,
+  onRenameConversation,
   onOpenSettings,
 }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("")
@@ -80,66 +81,77 @@ export function SidebarContent({
           />
         </div>
 
-        {/* Conversations List Grouped by Date Category */}
+        {/* Conversations List */}
         <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1 scrollbar-thin">
-          {categories.map((cat) => {
-            const items = filtered.filter((c) => c.category === cat)
-            if (items.length === 0) return null
+          {filtered.length === 0 ? (
+            <div className="px-3 py-4 text-center text-xs text-slate-500">
+              No conversations found.
+            </div>
+          ) : (
+            categories.map((cat) => {
+              const items = filtered.filter((c) => (c.category || "Today") === cat)
+              if (items.length === 0) return null
 
-            return (
-              <div key={cat} className="space-y-1">
-                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-2 block">
-                  {cat}
-                </span>
-                {items.map((item) => {
-                  const isActive = item.id === activeId
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => onSelectConversation(item.id)}
-                      className={`group relative flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition-all cursor-pointer ${
-                        isActive
-                          ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 shadow-sm"
-                          : "text-slate-300 hover:bg-white/[0.05] hover:text-white"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 overflow-hidden pr-2">
-                        <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-emerald-400" : "text-slate-500"}`} />
-                        <span className="truncate">{item.title}</span>
-                      </div>
+              return (
+                <div key={cat} className="space-y-1">
+                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-2 block">
+                    {cat}
+                  </span>
+                  {items.map((item) => {
+                    const isActive = item.id === activeId
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => onSelectConversation(item.id)}
+                        className={`group relative flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition-all cursor-pointer ${
+                          isActive
+                            ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 shadow-sm"
+                            : "text-slate-300 hover:bg-white/[0.05] hover:text-white"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 overflow-hidden pr-2">
+                          <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-emerald-400" : "text-slate-500"}`} />
+                          <span className="truncate">{item.title}</span>
+                        </div>
 
-                      {/* Dropdown Options on hover */}
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger>
-                            <div className="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-white">
-                              <MoreHorizontal className="h-3.5 w-3.5" />
-                            </div>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="right">
-                            <DropdownMenuItem
-                              onClick={() => {
-                                const newTitle = prompt("Enter new title:", item.title)
-                                if (newTitle) item.title = newTitle
-                              }}
-                            >
-                              <Edit3 className="h-3.5 w-3.5 mr-2" /> Rename
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => onDeleteConversation(item.id)}
-                              className="text-rose-400 hover:text-rose-300"
-                            >
-                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {/* Dropdown Options on hover */}
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger>
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-white"
+                              >
+                                <MoreHorizontal className="h-3.5 w-3.5" />
+                              </div>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="right">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  const newTitle = prompt("Enter new title:", item.title)
+                                  if (newTitle && onRenameConversation) {
+                                    onRenameConversation(item.id, newTitle)
+                                  }
+                                }}
+                              >
+                                <Edit3 className="h-3.5 w-3.5 mr-2" /> Rename
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => onDeleteConversation(item.id)}
+                                className="text-rose-400 hover:text-rose-300"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })}
+                    )
+                  })}
+                </div>
+              )
+            })
+          )}
         </div>
       </div>
 

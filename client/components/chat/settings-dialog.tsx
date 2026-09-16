@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import {
   X,
   User,
@@ -15,10 +15,17 @@ import {
   Mail,
   CreditCard,
   Sparkles,
+  Brain,
+  Plus,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { UserMemory } from "@/types/memory"
+import { fetchMemoriesApi, addMemoryApi, deleteMemoryApi } from "@/lib/api/memory"
+import { useCurrentUser } from "@/hooks/use-auth"
 
 interface SettingsDialogProps {
   isOpen: boolean
@@ -26,12 +33,63 @@ interface SettingsDialogProps {
   onDeleteAllChats?: () => void
 }
 
-type TabType = "general" | "account" | "data" | "security"
+type TabType = "general" | "account" | "data" | "security" | "memory"
 
 export function SettingsDialog({ isOpen, onClose, onDeleteAllChats }: SettingsDialogProps) {
   const [activeTab, setActiveTab] = useState<TabType>("account")
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false)
   const [exportSuccess, setExportSuccess] = useState(false)
+
+  // Long-Term AI Memory state
+  const [memories, setMemories] = useState<UserMemory[]>([])
+  const [isLoadingMemories, setIsLoadingMemories] = useState(false)
+  const [newMemoryText, setNewMemoryText] = useState("")
+  const [isAddingMemory, setIsAddingMemory] = useState(false)
+
+  const { data: user } = useCurrentUser()
+  const userInitials = user?.email ? user.email.slice(0, 2).toUpperCase() : "US"
+
+  useEffect(() => {
+    if (isOpen && activeTab === "memory") {
+      loadMemories()
+    }
+  }, [isOpen, activeTab])
+
+  const loadMemories = async () => {
+    setIsLoadingMemories(true)
+    try {
+      const data = await fetchMemoriesApi()
+      setMemories(data)
+    } catch (err) {
+      console.error("Failed to load memories:", err)
+    } finally {
+      setIsLoadingMemories(false)
+    }
+  }
+
+  const handleAddMemory = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newMemoryText.trim()) return
+    setIsAddingMemory(true)
+    try {
+      const created = await addMemoryApi({ memory_text: newMemoryText.trim() })
+      setMemories((prev) => [created, ...prev])
+      setNewMemoryText("")
+    } catch (err) {
+      console.error("Failed to add memory:", err)
+    } finally {
+      setIsAddingMemory(false)
+    }
+  }
+
+  const handleDeleteMemory = async (id: string) => {
+    try {
+      await deleteMemoryApi(id)
+      setMemories((prev) => prev.filter((m) => m.id !== id))
+    } catch (err) {
+      console.error("Failed to delete memory:", err)
+    }
+  }
 
   if (!isOpen) return null
 
@@ -87,6 +145,18 @@ export function SettingsDialog({ isOpen, onClose, onDeleteAllChats }: SettingsDi
               </button>
 
               <button
+                onClick={() => setActiveTab("memory")}
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all cursor-pointer ${
+                  activeTab === "memory"
+                    ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
+                    : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200"
+                }`}
+              >
+                <Brain className="h-4 w-4 text-emerald-400" />
+                <span>AI Memory</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab("data")}
                 className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all cursor-pointer ${
                   activeTab === "data"
@@ -139,202 +209,141 @@ export function SettingsDialog({ isOpen, onClose, onDeleteAllChats }: SettingsDi
                 <p className="text-xs text-slate-400 mt-0.5">Manage your personal profile, email, and subscription plan.</p>
               </div>
 
-              {/* Profile Card */}
-              <div className="flex items-center gap-4 p-4 rounded-2xl border border-white/10 bg-[#0D131D]">
+              <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
                 <Avatar className="h-14 w-14 bg-emerald-950 border border-emerald-500/40">
-                  <AvatarFallback className="bg-emerald-950 text-emerald-300 font-bold text-base">
-                    SS
+                  <AvatarFallback className="bg-emerald-950 text-emerald-300 text-lg font-bold">
+                    {userInitials}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h5 className="text-sm font-bold text-white">Sandeep Singh</h5>
-                    <Badge variant="success" className="text-[10px] px-2">Pro Member</Badge>
-                  </div>
-                  <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-1">
-                    <Mail className="h-3.5 w-3.5 text-slate-500" />
-                    sk335@example.com
-                  </p>
-                </div>
-              </div>
-
-              {/* Account Settings Items */}
-              <div className="space-y-4 pt-2">
-                <div className="flex items-center justify-between py-3 border-b border-white/5">
-                  <div>
-                    <span className="text-xs font-semibold text-white block">Subscription Plan</span>
-                    <span className="text-[11px] text-slate-400">Nexora Pro Workspace (Unlimited Gemini 2.5)</span>
-                  </div>
-                  <Button variant="outline" size="sm" className="text-xs">
-                    <CreditCard className="h-3.5 w-3.5 mr-1.5 text-emerald-400" /> Manage Plan
-                  </Button>
-                </div>
-
-                <div className="flex items-center justify-between py-3 border-b border-white/5">
-                  <div>
-                    <span className="text-xs font-semibold text-white block">Primary Email</span>
-                    <span className="text-[11px] text-slate-400">sk335@example.com (Verified)</span>
-                  </div>
-                  <Button variant="outline" size="sm" className="text-xs">
-                    Change Email
-                  </Button>
-                </div>
-
-                {/* Delete Account Section */}
-                <div className="pt-4">
-                  <div className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-4">
-                    <div className="flex items-center gap-2 mb-1 text-rose-400 font-semibold text-xs">
-                      <AlertTriangle className="h-4 w-4 shrink-0" />
-                      <span>Danger Zone</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
-                      Deleting your account will permanently purge all stored conversation histories, custom system prompts, and workspace settings.
-                    </p>
-
-                    {deleteAccountConfirm ? (
-                      <div className="flex items-center gap-2 pt-2 border-t border-rose-500/20">
-                        <span className="text-xs font-semibold text-rose-300">Are you sure?</span>
-                        <Button variant="primary" size="sm" onClick={handleDeleteAccount} className="bg-rose-600 hover:bg-rose-500 text-white text-xs">
-                          Yes, Delete Account
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setDeleteAccountConfirm(false)} className="text-xs">
-                          Cancel
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDeleteAccountConfirm(true)}
-                        className="border-rose-500/40 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 text-xs"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete Account
-                      </Button>
-                    )}
-                  </div>
+                <div>
+                  <h5 className="text-sm font-semibold text-white">{user?.email || "User Account"}</h5>
+                  <p className="text-xs text-slate-400">Connected Account</p>
+                  <Badge className="mt-1.5 bg-emerald-500/10 text-emerald-300 border-emerald-500/20 text-[10px]">
+                    Pro Workspace Tier
+                  </Badge>
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB 2: DATA CONTROLS */}
+          {/* TAB 2: LONG-TERM AI MEMORY */}
+          {activeTab === "memory" && (
+            <div className="space-y-6 animate-in fade-in-0 duration-150">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-emerald-400" />
+                  <h4 className="text-lg font-bold text-white">AI Personalization & Long-Term Memory</h4>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  Nexora automatically remembers key facts, preferences, and tech stacks across conversations using Neon DB vector embeddings.
+                </p>
+              </div>
+
+              {/* Add Memory Form */}
+              <form onSubmit={handleAddMemory} className="flex gap-2">
+                <Input
+                  value={newMemoryText}
+                  onChange={(e) => setNewMemoryText(e.target.value)}
+                  placeholder="Remember something manually (e.g. 'I prefer writing FastAPI in Python')..."
+                  className="bg-white/[0.03] border-white/10 text-xs placeholder:text-slate-500"
+                />
+                <Button
+                  type="submit"
+                  disabled={isAddingMemory || !newMemoryText.trim()}
+                  className="bg-emerald-500 text-slate-950 hover:bg-emerald-400 font-semibold text-xs shrink-0"
+                >
+                  {isAddingMemory ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+                  Add Fact
+                </Button>
+              </form>
+
+              {/* Memory List */}
+              <div className="space-y-2">
+                <h5 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Stored Facts ({memories.length})</h5>
+
+                {isLoadingMemories ? (
+                  <div className="flex items-center justify-center py-8 text-slate-500 gap-2 text-xs">
+                    <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
+                    <span>Loading memory store from Neon pgvector...</span>
+                  </div>
+                ) : memories.length === 0 ? (
+                  <div className="rounded-xl border border-white/5 bg-white/[0.01] p-6 text-center text-xs text-slate-500">
+                    No memories stored yet. Nexora will automatically remember details as you chat, or you can add one above!
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                    {memories.map((mem) => (
+                      <div
+                        key={mem.id}
+                        className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs hover:border-emerald-500/30 transition-all"
+                      >
+                        <div className="flex items-start gap-2.5 overflow-hidden pr-2">
+                          <Badge className="bg-emerald-500/10 text-emerald-300 border-emerald-500/20 text-[10px] mt-0.5 shrink-0">
+                            {mem.category}
+                          </Badge>
+                          <span className="text-slate-200 break-words font-medium">{mem.memory_text}</span>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteMemory(mem.id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0 cursor-pointer"
+                          title="Forget this memory"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: DATA CONTROLS */}
           {activeTab === "data" && (
             <div className="space-y-6 animate-in fade-in-0 duration-150">
               <div>
                 <h4 className="text-lg font-bold text-white">Data Controls</h4>
-                <p className="text-xs text-slate-400 mt-0.5">Manage conversation storage, exports, and shared links.</p>
+                <p className="text-xs text-slate-400 mt-0.5">Manage workspace conversation logs, export history, or clear sessions.</p>
               </div>
 
-              <div className="space-y-4">
-                {/* Clear all chats */}
-                <div className="flex items-center justify-between p-4 rounded-2xl border border-white/10 bg-[#0D131D]">
-                  <div>
-                    <span className="text-xs font-semibold text-white block">Delete all chats</span>
-                    <span className="text-[11px] text-slate-400">Permanently clear all chat conversations from your sidebar</span>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (confirm("Are you sure you want to clear all chat histories?")) {
-                        onDeleteAllChats?.()
-                      }
-                    }}
-                    className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 text-xs"
-                  >
-                    <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Clear all
-                  </Button>
+              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 flex items-center justify-between">
+                <div>
+                  <h5 className="text-sm font-semibold text-white">Clear All Chat Conversations</h5>
+                  <p className="text-xs text-slate-400">Permanently delete all active chat sessions.</p>
                 </div>
-
-                {/* Export Data */}
-                <div className="flex items-center justify-between p-4 rounded-2xl border border-white/10 bg-[#0D131D]">
-                  <div>
-                    <span className="text-xs font-semibold text-white block">Export data</span>
-                    <span className="text-[11px] text-slate-400">Export an archive of all conversations, code snippets, and custom presets</span>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={handleExportData} className="text-xs">
-                    {exportSuccess ? (
-                      <>
-                        <CheckCircle2 className="h-3.5 w-3.5 mr-1.5 text-emerald-400" /> Exported!
-                      </>
-                    ) : (
-                      <>
-                        <Download className="h-3.5 w-3.5 mr-1.5 text-emerald-400" /> Export
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {/* Shared Links */}
-                <div className="flex items-center justify-between p-4 rounded-2xl border border-white/10 bg-[#0D131D]">
-                  <div>
-                    <span className="text-xs font-semibold text-white block">Shared links</span>
-                    <span className="text-[11px] text-slate-400">Manage public links created to share chats with team members</span>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => alert("0 active shared links found.")} className="text-xs">
-                    <Share2 className="h-3.5 w-3.5 mr-1.5 text-teal-400" /> Manage
-                  </Button>
-                </div>
+                <Button
+                  onClick={onDeleteAllChats}
+                  className="bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 border border-rose-500/20 text-xs font-semibold"
+                >
+                  <Trash2 className="h-4 w-4 mr-1.5" />
+                  Clear All
+                </Button>
               </div>
             </div>
           )}
 
-          {/* TAB 3: GENERAL */}
+          {/* TAB 4: GENERAL */}
           {activeTab === "general" && (
             <div className="space-y-6 animate-in fade-in-0 duration-150">
               <div>
-                <h4 className="text-lg font-bold text-white">General Preferences</h4>
-                <p className="text-xs text-slate-400 mt-0.5">Customize theme options, default AI models, and language settings.</p>
+                <h4 className="text-lg font-bold text-white">General Settings</h4>
+                <p className="text-xs text-slate-400 mt-0.5">Adjust interface behavior and defaults.</p>
               </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between py-3 border-b border-white/5">
-                  <div>
-                    <span className="text-xs font-semibold text-white block">Workspace Theme</span>
-                    <span className="text-[11px] text-slate-400">Nexora Obsidian Dark</span>
-                  </div>
-                  <Badge variant="secondary" className="text-xs">Dark (Default)</Badge>
-                </div>
-
-                <div className="flex items-center justify-between py-3 border-b border-white/5">
-                  <div>
-                    <span className="text-xs font-semibold text-white block">Default AI Model</span>
-                    <span className="text-[11px] text-slate-400">Primary model selected for new chat sessions</span>
-                  </div>
-                  <span className="text-xs font-mono text-emerald-300 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
-                    Gemini 2.5 Flash
-                  </span>
-                </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs text-slate-400">
+                Theme: Dark Mode (Default)
               </div>
             </div>
           )}
 
-          {/* TAB 4: SECURITY */}
+          {/* TAB 5: SECURITY */}
           {activeTab === "security" && (
             <div className="space-y-6 animate-in fade-in-0 duration-150">
               <div>
-                <h4 className="text-lg font-bold text-white">Security & Privacy</h4>
-                <p className="text-xs text-slate-400 mt-0.5">Manage authentication security and active device sessions.</p>
+                <h4 className="text-lg font-bold text-white">Security & Auth</h4>
+                <p className="text-xs text-slate-400 mt-0.5">Manage session security and tokens.</p>
               </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-2xl border border-white/10 bg-[#0D131D]">
-                  <div>
-                    <span className="text-xs font-semibold text-white block">Two-Factor Authentication (2FA)</span>
-                    <span className="text-[11px] text-slate-400">Add an extra layer of security using TOTP authenticator apps</span>
-                  </div>
-                  <Badge variant="success" className="text-xs">Enabled</Badge>
-                </div>
-
-                <div className="flex items-center justify-between p-4 rounded-2xl border border-white/10 bg-[#0D131D]">
-                  <div>
-                    <span className="text-xs font-semibold text-white block">Active Sessions</span>
-                    <span className="text-[11px] text-slate-400">Windows PC • Chrome Browser (Current Session)</span>
-                  </div>
-                  <Button variant="outline" size="sm" className="text-xs">
-                    Log out all
-                  </Button>
-                </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs text-slate-400">
+                Active session authentication: HttpOnly Cookie + CSRF protection enabled.
               </div>
             </div>
           )}
