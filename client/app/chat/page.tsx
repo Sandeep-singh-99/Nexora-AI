@@ -5,6 +5,7 @@ import { motion } from "motion/react"
 import { MessageSquare } from "lucide-react"
 import { useAuth } from "@/components/providers/auth-provider"
 import { ChatSidebar } from "@/components/chat/chat-sidebar"
+import { ChatSidebarSkeleton } from "@/components/chat/chat-sidebar-skeleton"
 import { ChatHeader } from "@/components/chat/chat-header"
 import { AssistantMessage } from "@/components/chat/assistant-message"
 import { UserMessage } from "@/components/chat/user-message"
@@ -485,6 +486,7 @@ export default function ChatPage() {
         isOpenMobile={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
         isMessagesLoading={isMessagesLoading}
+        isLoading={isConversationsLoading}
       />
 
       {/* Main Chat Interface */}

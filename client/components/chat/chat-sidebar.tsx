@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { Sheet } from "@/components/ui/sheet"
 import { useCurrentUser } from "@/hooks/use-auth"
+import { ChatSidebarSkeleton, SidebarSkeletonContent } from "@/components/chat/chat-sidebar-skeleton"
 
 interface ChatSidebarProps {
   conversations: ConversationSession[]
@@ -20,6 +21,7 @@ interface ChatSidebarProps {
   isOpenMobile?: boolean
   onCloseMobile?: () => void
   isMessagesLoading?: boolean
+  isLoading?: boolean
 }
 
 export function SidebarContent({
@@ -191,6 +193,15 @@ export function SidebarContent({
 }
 
 export function ChatSidebar(props: ChatSidebarProps) {
+  if (props.isLoading) {
+    return (
+      <ChatSidebarSkeleton
+        isOpenMobile={props.isOpenMobile}
+        onCloseMobile={props.onCloseMobile}
+      />
+    )
+  }
+
   return (
     <>
       {/* Desktop Sidebar (Fixed 260px) */}
