@@ -21,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} dark scroll-smooth`}>
+    <html lang="en" className={`${inter.variable} dark scroll-smooth`} data-scroll-behavior="smooth">
       <body className="min-h-screen bg-[#05070B] text-[#F5F7FA] font-sans antialiased flex flex-col">
         <QueryProvider>
           <AuthProvider>{children}</AuthProvider>
