@@ -19,7 +19,7 @@ export interface SearchResultItem {
 }
 
 export type SSEEvent =
-  | { type: "status"; label: string; node?: string }
+  | { type: "status"; label: string; node?: string; agent?: string }
   | {
       type: "search";
       status: "searching" | "completed";

@@ -11,6 +11,8 @@ interface AIThinkingProps {
   isSearching?: boolean
   searchResults?: SearchResultItem[]
   steps?: string[]
+  activeAgent?: string
+  activeNode?: string
 }
 
 export function AIThinking({
@@ -19,6 +21,8 @@ export function AIThinking({
   searchQuery,
   isSearching,
   searchResults,
+  activeAgent,
+  activeNode,
   steps = [
     "Analyzing user prompt & intent",
     "Executing LangGraph multi-agent pipeline",
@@ -26,6 +30,16 @@ export function AIThinking({
   ],
 }: AIThinkingProps) {
   const [expanded, setExpanded] = useState(false)
+
+  const isResearchWorkflow = [
+    "research_agent",
+    "plan_research",
+    "deep_research",
+    "verify_content",
+    "synthesize_draft",
+    "evaluate_and_polish",
+    "publish_final",
+  ].includes(activeNode || "")
 
   return (
     <div className="my-2 max-w-xl rounded-xl border border-white/10 bg-[#0D131D]/80 p-3 shadow-lg backdrop-blur-md transition-all">
@@ -39,15 +53,15 @@ export function AIThinking({
             <Sparkles className="relative h-3 w-3 text-emerald-400" />
           </span>
           <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-200 bg-clip-text text-transparent font-semibold">
-            Thinking & Reasoning...
+            {activeAgent ? `${activeAgent} Working...` : "Thinking & Reasoning..."}
           </span>
           <span className="text-[11px] text-slate-500 font-mono">({thinkingTime})</span>
         </div>
         <div className="flex items-center gap-1 text-slate-400">
           <span className="text-[11px] font-mono">
             {searchResults && searchResults.length > 0
-              ? `${searchResults.length} sources searched`
-              : "View reasoning"}
+              ? `${searchResults.length} sources grounded`
+              : "View pipeline"}
           </span>
           {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </div>
@@ -57,7 +71,7 @@ export function AIThinking({
       {isSearching && (
         <div className="mt-2 flex items-center gap-2 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-lg animate-pulse">
           <Search className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-          <span>Searching Tavily Web for: <strong>&quot;{searchQuery || "information"}&quot;</strong></span>
+          <span>Google Search Grounding: <strong>&quot;{searchQuery || "investigating sources..."}&quot;</strong></span>
         </div>
       )}
 
@@ -99,18 +113,41 @@ export function AIThinking({
             </div>
           )}
 
+          {isResearchWorkflow && (
+            <div className="p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20 space-y-1.5 font-mono text-[11px]">
+              <div className="text-emerald-400 font-semibold mb-1">🔬 Deep Research Multi-Agent Pipeline:</div>
+              <div className="space-y-1 text-slate-300">
+                <div className={`flex items-center gap-2 ${activeNode === "plan_research" ? "text-emerald-300 font-bold animate-pulse" : "text-slate-400"}`}>
+                  <span>1. 📋 Research Planner:</span> Deconstruct topic into 3-5 inquiry angles
+                </div>
+                <div className={`flex items-center gap-2 ${activeNode === "deep_research" ? "text-emerald-300 font-bold animate-pulse" : "text-slate-400"}`}>
+                  <span>2. 🔍 Deep Search Subagent:</span> Google Search grounding & data extraction
+                </div>
+                <div className={`flex items-center gap-2 ${activeNode === "verify_content" ? "text-emerald-300 font-bold animate-pulse" : "text-slate-400"}`}>
+                  <span>3. 🛡️ Verification Subagent:</span> Fact-checking & citation validation
+                </div>
+                <div className={`flex items-center gap-2 ${activeNode === "synthesize_draft" ? "text-emerald-300 font-bold animate-pulse" : "text-slate-400"}`}>
+                  <span>4. ✍️ Lead Synthesizer:</span> Compiling structured comprehensive report
+                </div>
+                <div className={`flex items-center gap-2 ${activeNode === "evaluate_and_polish" ? "text-emerald-300 font-bold animate-pulse" : "text-slate-400"}`}>
+                  <span>5. ⚖️ Quality Evaluator:</span> Reviewing completeness & polishing output
+                </div>
+              </div>
+            </div>
+          )}
+
           {thinkingText ? (
             <div className="text-[11px] text-slate-300 font-mono leading-relaxed whitespace-pre-wrap bg-black/40 p-2.5 rounded-lg border border-white/5">
               {thinkingText}
             </div>
-          ) : (
+          ) : !isResearchWorkflow ? (
             steps.map((step, idx) => (
               <div key={idx} className="flex items-center gap-2 text-[11px] text-slate-400">
                 <Cpu className="h-3 w-3 text-emerald-400/70 shrink-0" />
                 <span className="font-mono">{step}</span>
               </div>
             ))
-          )}
+          ) : null}
         </div>
       )}
     </div>

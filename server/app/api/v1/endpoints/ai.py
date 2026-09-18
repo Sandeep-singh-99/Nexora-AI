@@ -23,8 +23,43 @@ def extract_search_query(tool_input) -> str:
     return str(tool_input or "")
 
 
+def extract_grounding_metadata(metadata: dict) -> list[dict]:
+    """Extracts sources from Google Gemini native search grounding metadata."""
+    results = []
+    if not isinstance(metadata, dict):
+        return results
+
+    grounding = (
+        metadata.get("grounding_metadata")
+        or metadata.get("groundingMetadata")
+        or {}
+    )
+    chunks = (
+        grounding.get("grounding_chunks")
+        or grounding.get("groundingChunks")
+        or []
+    )
+    for chunk in chunks:
+        web = chunk.get("web") or {}
+        uri = web.get("uri") or ""
+        title = web.get("title") or "Web Source"
+        if uri and uri.startswith("http"):
+            domain = "web"
+            try:
+                domain = urlparse(uri).netloc.replace("www.", "")
+            except Exception:
+                pass
+            results.append({
+                "title": title,
+                "url": uri,
+                "snippet": title,
+                "source": domain,
+            })
+    return results
+
+
 def extract_tavily_results(tool_output) -> list[dict]:
-    """Parses Tavily tool outputs (list of dicts, strings, or documents) into standard search items."""
+    """Parses Tavily and Google tool outputs (list of dicts, strings, documents, or grounding) into standard search items."""
     results = []
     if not tool_output:
         return results
@@ -33,6 +68,9 @@ def extract_tavily_results(tool_output) -> list[dict]:
     if isinstance(tool_output, list):
         raw_items = tool_output
     elif isinstance(tool_output, dict):
+        # Check if output is Google Grounding metadata or Tavily results
+        if "grounding_metadata" in tool_output or "groundingChunks" in tool_output:
+            return extract_grounding_metadata(tool_output)
         raw_items = tool_output.get("results") or [tool_output]
     elif isinstance(tool_output, str):
         try:
@@ -40,13 +78,15 @@ def extract_tavily_results(tool_output) -> list[dict]:
             if isinstance(parsed, list):
                 raw_items = parsed
             elif isinstance(parsed, dict):
+                if "grounding_metadata" in parsed or "groundingChunks" in parsed:
+                    return extract_grounding_metadata(parsed)
                 raw_items = parsed.get("results") or [parsed]
         except Exception:
             pass
 
     for item in raw_items:
         if isinstance(item, dict):
-            url = item.get("url", "")
+            url = item.get("url") or item.get("uri") or item.get("link") or ""
             title = item.get("title") or item.get("name") or "Web Source"
             snippet = item.get("content") or item.get("snippet") or item.get("raw_content") or ""
             domain = "web"
@@ -55,16 +95,17 @@ def extract_tavily_results(tool_output) -> list[dict]:
                     domain = urlparse(url).netloc.replace("www.", "")
                 except Exception:
                     domain = "web"
-            results.append({
-                "title": title,
-                "url": url,
-                "snippet": snippet,
-                "source": domain or "web",
-            })
+            if url:
+                results.append({
+                    "title": title,
+                    "url": url,
+                    "snippet": snippet,
+                    "source": domain or "web",
+                })
         elif hasattr(item, "page_content"):
             content = getattr(item, "page_content", "")
             meta = getattr(item, "metadata", {}) or {}
-            url = meta.get("url") or meta.get("source") or ""
+            url = meta.get("url") or meta.get("source") or meta.get("uri") or ""
             title = meta.get("title") or "Web Source"
             domain = "web"
             if url and url.startswith("http"):
@@ -72,12 +113,13 @@ def extract_tavily_results(tool_output) -> list[dict]:
                     domain = urlparse(url).netloc.replace("www.", "")
                 except Exception:
                     domain = "web"
-            results.append({
-                "title": title,
-                "url": url,
-                "snippet": content,
-                "source": domain or "web",
-            })
+            if url:
+                results.append({
+                    "title": title,
+                    "url": url,
+                    "snippet": content,
+                    "source": domain or "web",
+                })
 
     return results
 
@@ -104,7 +146,7 @@ async def event_generator(request: Request, message: str, thread_id: str):
             kind = event.get("event")
             name = event.get("name", "")
 
-            # 1. Node Execution Status Updates
+            # 1. Node / Subagent Execution Status Updates
             if kind == "on_chain_start" and name in [
                 "input_guardrail",
                 "router",
@@ -112,23 +154,41 @@ async def event_generator(request: Request, message: str, thread_id: str):
                 "coding_agent",
                 "research_agent",
                 "math_agent",
+                "plan_research",
+                "deep_research",
+                "verify_content",
+                "synthesize_draft",
+                "evaluate_and_polish",
+                "publish_final",
                 "output_guardrail",
             ]:
                 active_node = name
                 if name != "output_guardrail":
-                    labels = {
-                        "input_guardrail": "Evaluating safety policies...",
-                        "router": "Analyzing request intent...",
-                        "chat_agent": "Generating response...",
-                        "coding_agent": "Architecting & writing code...",
-                        "research_agent": "Conducting deep research via Tavily...",
-                        "math_agent": "Solving mathematical & symbolic operations...",
+                    agent_metadata = {
+                        "input_guardrail": ("Safety Guardrail", "Evaluating safety policies..."),
+                        "router": ("Intent Router", "Analyzing request and assigning agent..."),
+                        "chat_agent": ("General Assistant", "Generating response..."),
+                        "coding_agent": ("Coding Specialist", "Architecting & writing code..."),
+                        "research_agent": ("Lead Research Director", "Orchestrating deep research workflow..."),
+                        "plan_research": ("Research Planner", "Deconstructing inquiry into 3-5 technical angles..."),
+                        "deep_research": ("Deep Search Subagent", "Conducting multi-query search across web sources..."),
+                        "verify_content": ("Verification Subagent", "Cross-checking facts, metrics & citations..."),
+                        "synthesize_draft": ("Research Synthesizer", "Compiling comprehensive research dossier..."),
+                        "evaluate_and_polish": ("Quality & Polish Evaluator", "Reviewing completeness & polishing output..."),
+                        "publish_final": ("Publisher", "Finalizing verified research dossier..."),
+                        "math_agent": ("Math Specialist", "Solving mathematical & symbolic operations..."),
                     }
-                    payload = json.dumps({"type": "status", "node": name, "label": labels.get(name, "Processing...")})
+                    agent_name, label = agent_metadata.get(name, ("AI Assistant", "Processing..."))
+                    payload = json.dumps({
+                        "type": "status",
+                        "node": name,
+                        "agent": agent_name,
+                        "label": label,
+                    })
                     yield f"data: {payload}\n\n"
 
-            # 2. Tavily Web Search Tool Invocation Start & End
-            elif kind == "on_tool_start" and ("search" in name.lower() or "tavily" in name.lower()):
+            # 2. Web Search Tool Invocation (Google Search Grounding / Tavily)
+            elif kind == "on_tool_start" and any(k in name.lower() for k in ["search", "google", "tavily", "internet"]):
                 raw_input = event.get("data", {}).get("input")
                 active_search_query = extract_search_query(raw_input)
                 payload = json.dumps({
@@ -138,7 +198,7 @@ async def event_generator(request: Request, message: str, thread_id: str):
                 })
                 yield f"data: {payload}\n\n"
 
-            elif kind == "on_tool_end" and ("search" in name.lower() or "tavily" in name.lower()):
+            elif kind == "on_tool_end" and any(k in name.lower() for k in ["search", "google", "tavily", "internet"]):
                 raw_output = event.get("data", {}).get("output")
                 parsed_results = extract_tavily_results(raw_output)
                 payload = json.dumps({
@@ -229,8 +289,17 @@ async def event_generator(request: Request, message: str, thread_id: str):
             ]:
                 chunk = event["data"]["chunk"]
                 
-                additional_kwargs = getattr(chunk, "additional_kwargs", {})
-                reasoning = additional_kwargs.get("reasoning_content") or getattr(chunk, "reasoning_content", None)
+                # Check for Google Grounding metadata in model chunk/response
+                response_metadata = getattr(chunk, "response_metadata", {}) or {}
+                if "grounding_metadata" in response_metadata or "groundingMetadata" in response_metadata:
+                    grounding_sources = extract_grounding_metadata(response_metadata)
+                    if grounding_sources:
+                        payload = json.dumps({
+                            "type": "search",
+                            "status": "completed",
+                            "results": grounding_sources,
+                        })
+                        yield f"data: {payload}\n\n"
 
                 if reasoning:
                     payload = json.dumps({"type": "thinking", "content": reasoning})

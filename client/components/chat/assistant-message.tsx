@@ -9,11 +9,65 @@ import { ChatMessage } from "@/types/chat"
 import { GenerativeUIRenderer } from "./generative-ui"
 import { AIThinking } from "./ai-thinking"
 import { MessageActions } from "./message-actions"
-import { Sparkles, Copy, Check, Terminal } from "lucide-react"
+import { Sparkles, Copy, Check, Terminal, Globe, ExternalLink } from "lucide-react"
+import { SearchResultItem } from "@/types/chat"
 
 interface AssistantMessageProps {
   message: ChatMessage
   onRegenerate?: () => void
+}
+
+function SourceCitations({ results }: { results: SearchResultItem[] }) {
+  if (!results || results.length === 0) return null
+
+  // Deduplicate sources by URL
+  const uniqueResults = results.filter(
+    (item, index, self) => index === self.findIndex((t) => t.url === item.url)
+  )
+
+  return (
+    <div className="my-3 p-3 rounded-2xl bg-[#0D131D]/90 border border-white/10 shadow-lg">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-teal-400 mb-2.5 font-mono">
+        <Globe className="h-3.5 w-3.5 text-teal-400" />
+        <span>Grounded Web Sources ({uniqueResults.length})</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {uniqueResults.map((res, idx) => {
+          let domain = res.source || "web"
+          if (res.url) {
+            try {
+              domain = new URL(res.url).hostname.replace("www.", "")
+            } catch {
+              domain = res.source || "web"
+            }
+          }
+          const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`
+
+          return (
+            <a
+              key={idx}
+              href={res.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`${res.title}\n${res.url}`}
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 hover:bg-white/10 hover:border-emerald-500/40 text-xs text-slate-300 hover:text-white transition-all group shrink-0 max-w-[240px]"
+            >
+              <img
+                src={faviconUrl}
+                alt=""
+                className="h-3.5 w-3.5 rounded-full shrink-0 bg-slate-800"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = "none"
+                }}
+              />
+              <span className="truncate font-medium text-[11px]">{res.title || domain}</span>
+              <ExternalLink className="h-3 w-3 text-slate-500 group-hover:text-emerald-400 shrink-0 ml-auto" />
+            </a>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 function preprocessLaTeX(content: string): string {
@@ -77,7 +131,10 @@ function CodeBlock({ language, value }: { language: string; value: string }) {
 
 export function AssistantMessage({ message, onRegenerate }: AssistantMessageProps) {
   const showThinking = Boolean(
-    message.thinkingText || message.isSearching || (message.searchResults && message.searchResults.length > 0)
+    message.thinkingText ||
+    message.isSearching ||
+    message.activeAgent ||
+    (message.searchResults && message.searchResults.length > 0)
   )
 
   return (
@@ -106,7 +163,14 @@ export function AssistantMessage({ message, onRegenerate }: AssistantMessageProp
             searchQuery={message.searchQuery}
             isSearching={message.isSearching}
             searchResults={message.searchResults}
+            activeAgent={message.activeAgent}
+            activeNode={message.activeNode}
           />
+        )}
+
+        {/* Grounded Web Sources Badges (ChatGPT / Perplexity style) */}
+        {message.searchResults && message.searchResults.length > 0 && (
+          <SourceCitations results={message.searchResults} />
         )}
 
         {/* Message Content */}

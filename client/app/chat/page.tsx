@@ -371,7 +371,13 @@ export default function ChatPage() {
               if (msg.id !== assistantMsgId) return msg
 
               if (event.type === "status") {
-                return { ...msg, statusLabel: event.label, thinkingTime: `${durationSeconds}s` }
+                return {
+                  ...msg,
+                  statusLabel: event.label,
+                  activeAgent: event.agent || msg.activeAgent,
+                  activeNode: event.node || msg.activeNode,
+                  thinkingTime: `${durationSeconds}s`,
+                }
               } else if (event.type === "search") {
                 return {
                   ...msg,

@@ -19,6 +19,8 @@ export type ChatMessage = {
   thinkingTime?: string;
   thinkingText?: string;
   statusLabel?: string;
+  activeAgent?: string;
+  activeNode?: string;
   isSearching?: boolean;
   searchQuery?: string;
   searchResults?: SearchResultItem[];
