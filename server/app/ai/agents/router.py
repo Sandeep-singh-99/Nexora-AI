@@ -19,7 +19,7 @@ router_agent = create_agent(
         "- chat_agent: General conversation, greetings, simple Q&A, "
         "everyday questions, and ALL current time/date queries (e.g., 'What time is it in New Delhi?').\n"
         "- coding_agent: Programming, debugging, software architecture, code generation.\n"
-        "- research_agent: Deep research, web search, external news, and in-depth factual topics (excluding time/date queries).\n"
+        "- research_agent: Deep research, exhaustive web investigation, market/academic analysis, multi-angle inquiry, citations, trend reports, and in-depth factual topics (excluding simple time/date queries).\n"
         "- math_agent: Mathematical equations, algebra, calculus (derivatives, integrals, limits), matrix calculations, factorization, simplification, statistics, and symbolic computations."
     ),
     response_format=RouteDecision,
