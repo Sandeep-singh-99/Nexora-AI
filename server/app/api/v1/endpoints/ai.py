@@ -169,7 +169,7 @@ async def event_generator(request: Request, message: str, thread_id: str):
                         "router": ("Intent Router", "Analyzing request and assigning agent..."),
                         "chat_agent": ("General Assistant", "Generating response..."),
                         "coding_agent": ("Coding Specialist", "Architecting & writing code..."),
-                        "research_agent": ("Lead Research Director", "Orchestrating deep research workflow..."),
+                        "research_agent": ("Lead Research Agent", "Conducting deep search & factual investigation..."),
                         "plan_research": ("Research Planner", "Deconstructing inquiry into 3-5 technical angles..."),
                         "deep_research": ("Deep Search Subagent", "Conducting multi-query search across web sources..."),
                         "verify_content": ("Verification Subagent", "Cross-checking facts, metrics & citations..."),

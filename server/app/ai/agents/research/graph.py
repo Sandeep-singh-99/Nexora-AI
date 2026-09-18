@@ -1,43 +1,59 @@
-from langgraph.graph import StateGraph, START, END
-from app.ai.agents.research.state import ResearchGraphState
-from app.ai.agents.research.nodes import (
-    plan_research_node,
-    deep_research_node,
-    verify_content_node,
-    synthesize_draft_node,
-    evaluate_and_polish_node,
-    should_continue_refinement,
-    publish_final_node,
+import os
+from deepagents import create_deep_agent
+from app.ai.core.llm import get_llm
+from app.ai.tool.tavily import tavily_search
+from app.ai.middleware.tool_error import get_tool_error_middleware
+from app.ai.agents.research.prompts import (
+    RESEARCH_INSTRUCTIONS,
+    VERIFIER_INSTRUCTIONS,
 )
 
-# Construct Research StateGraph
-builder = StateGraph(ResearchGraphState)
 
-# Register Pipeline Nodes
-builder.add_node("plan_research", plan_research_node)
-builder.add_node("deep_research", deep_research_node)
-builder.add_node("verify_content", verify_content_node)
-builder.add_node("synthesize_draft", synthesize_draft_node)
-builder.add_node("evaluate_and_polish", evaluate_and_polish_node)
-builder.add_node("publish_final", publish_final_node)
+# 1. Specialized Deep Research Subagent (Google Search Grounding)
+research_subagent = {
+    "name": "research-specialist",
+    "description": (
+        "Specialist subagent used to conduct deep web searches, extract verifiable facts, "
+        "and gather cited evidence on specific subtopics."
+    ),
+    "system_prompt": RESEARCH_INSTRUCTIONS,
+    "tools": [tavily_search],
+    "model": get_llm("groq"),
+}
 
-# Connect Flow Edges
-builder.add_edge(START, "plan_research")
-builder.add_edge("plan_research", "deep_research")
-builder.add_edge("deep_research", "verify_content")
-builder.add_edge("verify_content", "synthesize_draft")
-builder.add_edge("synthesize_draft", "evaluate_and_polish")
+# 2. Specialized Fact-Checking & Verification Subagent
+verifier_subagent = {
+    "name": "content-verifier",
+    "description": (
+        "Specialist subagent used to cross-reference claims against search grounding, "
+        "validate citation URLs, and verify factual consistency."
+    ),
+    "system_prompt": VERIFIER_INSTRUCTIONS,
+    "tools": [tavily_search],
+    "model": get_llm("groq"),
+}
 
-builder.add_conditional_edges(
-    "evaluate_and_polish",
-    should_continue_refinement,
-    {
-        "refine": "synthesize_draft",
-        "publish": "publish_final",
-    },
+# 3. Lead Supervisor Deep Research Agent
+lead_research_prompt = """You are Nexora's Lead Research Director.
+Your job is to conduct comprehensive, multi-angle research and produce an authoritative, publication-grade dossier with verified citations.
+
+### RESEARCH METHODOLOGY
+1. **Deconstruct & Plan**: Identify 2-4 primary inquiry angles (e.g. background, state of the art, empirical data, limitations, future outlook).
+2. **Investigate & Search**: Use Google Search grounding to gather verifiable facts, statistics, dates, and direct source URLs.
+3. **Verify & Cross-Check**: Ensure all claims are directly supported by search findings and authoritative citations.
+4. **Synthesize & Format**: Write a structured Markdown report containing:
+   - **Executive Summary**
+   - **Detailed Thematic Analysis**
+   - **Key Data & Comparisons** (use Markdown tables where relevant)
+   - **Strategic Outlook & Limitations**
+   - **References & Sources** (with direct source URLs)
+"""
+
+# Compiled Lead Deep Research Agent with Google Search Grounding
+research_agent = create_deep_agent(
+    model=get_llm("groq"),
+    tools=[tavily_search],
+    system_prompt=lead_research_prompt,
+    subagents=[research_subagent, verifier_subagent],
+    middleware=[get_tool_error_middleware()],
 )
-
-builder.add_edge("publish_final", END)
-
-# Compiled research agent workflow
-research_agent = builder.compile()
