@@ -125,11 +125,14 @@ def extract_tavily_results(tool_output) -> list[dict]:
 
 
 async def event_generator(request: Request, message: str, thread_id: str):
-    """Streams thinking steps, Tavily search queries & results, guardrails status, and LLM response tokens.
+    """Streams thinking steps, search queries & results, guardrails status, and LLM response tokens.
     
     Monitors client connection state to stop execution immediately when the user clicks 'Stop'.
     """
-    config = {"configurable": {"thread_id": thread_id}}
+    config = {
+        "configurable": {"thread_id": thread_id},
+        "recursion_limit": 100,
+    }
     input_data = {"messages": [HumanMessage(content=message)]}
 
     active_search_query = ""
@@ -146,20 +149,13 @@ async def event_generator(request: Request, message: str, thread_id: str):
             kind = event.get("event")
             name = event.get("name", "")
 
-            # 1. Node / Subagent Execution Status Updates
+            # 1. Node / Agent Execution Status Updates
             if kind == "on_chain_start" and name in [
                 "input_guardrail",
                 "router",
                 "chat_agent",
                 "coding_agent",
-                "research_agent",
                 "math_agent",
-                "plan_research",
-                "deep_research",
-                "verify_content",
-                "synthesize_draft",
-                "evaluate_and_polish",
-                "publish_final",
                 "output_guardrail",
             ]:
                 active_node = name
@@ -169,13 +165,6 @@ async def event_generator(request: Request, message: str, thread_id: str):
                         "router": ("Intent Router", "Analyzing request and assigning agent..."),
                         "chat_agent": ("General Assistant", "Generating response..."),
                         "coding_agent": ("Coding Specialist", "Architecting & writing code..."),
-                        "research_agent": ("Lead Research Agent", "Conducting deep search & factual investigation..."),
-                        "plan_research": ("Research Planner", "Deconstructing inquiry into 3-5 technical angles..."),
-                        "deep_research": ("Deep Search Subagent", "Conducting multi-query search across web sources..."),
-                        "verify_content": ("Verification Subagent", "Cross-checking facts, metrics & citations..."),
-                        "synthesize_draft": ("Research Synthesizer", "Compiling comprehensive research dossier..."),
-                        "evaluate_and_polish": ("Quality & Polish Evaluator", "Reviewing completeness & polishing output..."),
-                        "publish_final": ("Publisher", "Finalizing verified research dossier..."),
                         "math_agent": ("Math Specialist", "Solving mathematical & symbolic operations..."),
                     }
                     agent_name, label = agent_metadata.get(name, ("AI Assistant", "Processing..."))
@@ -284,7 +273,6 @@ async def event_generator(request: Request, message: str, thread_id: str):
             elif kind == "on_chat_model_stream" and active_node in [
                 "chat_agent",
                 "coding_agent",
-                "research_agent",
                 "math_agent",
             ]:
                 chunk = event["data"]["chunk"]
@@ -300,6 +288,9 @@ async def event_generator(request: Request, message: str, thread_id: str):
                             "results": grounding_sources,
                         })
                         yield f"data: {payload}\n\n"
+
+                additional_kwargs = getattr(chunk, "additional_kwargs", {}) or {}
+                reasoning = additional_kwargs.get("reasoning_content") or getattr(chunk, "reasoning_content", None)
 
                 if reasoning:
                     payload = json.dumps({"type": "thinking", "content": reasoning})
@@ -366,7 +357,10 @@ async def chat(request: ChatRequest):
         validate_input(request.message)
 
         thread_id = request.thread_id or "default_session"
-        config = {"configurable": {"thread_id": thread_id}}
+        config = {
+            "configurable": {"thread_id": thread_id},
+            "recursion_limit": 100,
+        }
 
         result = await ai_graph.ainvoke(
             {"messages": [HumanMessage(content=request.message)]},
