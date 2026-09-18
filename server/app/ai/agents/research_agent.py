@@ -1,19 +1,16 @@
-from langchain.agents import create_agent
+from deepagents import create_deep_agent
 from app.ai.core.llm import get_llm
-from app.ai.tool.tavily import tavily_search
+from app.ai.tool.internet_search import internet_search
 from app.ai.middleware.tool_error import (
     get_tool_error_middleware,
-    get_tool_retry_middleware,
 )
 
-search_tool = tavily_search()
 
-research_agent = create_agent(
-    model=get_llm("groq"),
-    tools=[search_tool],
+research_agent = create_deep_agent(
+    model=get_llm("gemini"),
+    tools=[internet_search],
     middleware=[
         get_tool_error_middleware(),
-        get_tool_retry_middleware(tools=[search_tool.name]),
     ],
     system_prompt=(
         "You are Nexora's research assistant.\n"

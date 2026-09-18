@@ -36,7 +36,7 @@ def get_llm(provider: str = "groq"):
     # 2. Google Gemini Fallback Model (1,000,000 Token Limit)
     if settings.GEMINI_API_KEY:
         try:
-            gemini_model_name = settings.GEMINI_MODEL or "gemini-1.5-flash"
+            gemini_model_name = settings.GEMINI_MODEL or "gemini-3.6-flash"
             gemini_llm = init_chat_model(
                 gemini_model_name,
                 model_provider="google_genai",
