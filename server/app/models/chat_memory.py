@@ -64,6 +64,12 @@ class Conversation(Base):
         order_by="Message.created_at",
         lazy="selectin",
     )
+    pins: Mapped[List["Pin"]] = relationship(
+        "Pin",
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        order_by="Pin.created_at.desc()",
+    )
 
 
 class Message(Base):
@@ -106,6 +112,7 @@ class Message(Base):
 
     # Relationships
     conversation: Mapped["Conversation"] = relationship("Conversation", back_populates="messages")
+    pins: Mapped[List["Pin"]] = relationship("Pin", back_populates="message", cascade="all, delete-orphan")
 
 
 class UserMemory(Base):
@@ -165,3 +172,51 @@ class UserMemory(Base):
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
     )
+
+
+class Pin(Base):
+    """Pinned message within a conversation thread."""
+    __tablename__ = "pins"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("conversations.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("messages.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    note: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utc_now,
+        nullable=False,
+    )
+
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="pins")
+    conversation: Mapped["Conversation"] = relationship("Conversation", back_populates="pins")
+    message: Mapped["Message"] = relationship("Message", back_populates="pins", lazy="joined")
+
+    __table_args__ = (
+        Index("uq_pins_conversation_message", conversation_id, message_id, unique=True),
+    )
+

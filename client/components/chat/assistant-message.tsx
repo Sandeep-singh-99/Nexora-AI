@@ -9,12 +9,14 @@ import { ChatMessage } from "@/types/chat"
 import { GenerativeUIRenderer } from "./generative-ui"
 import { AIThinking } from "./ai-thinking"
 import { MessageActions } from "./message-actions"
-import { Sparkles, Copy, Check, Terminal, Globe, ExternalLink } from "lucide-react"
+import { Sparkles, Copy, Check, Terminal, Globe, ExternalLink, Pin } from "lucide-react"
 import { SearchResultItem } from "@/types/chat"
 
 interface AssistantMessageProps {
   message: ChatMessage
   onRegenerate?: () => void
+  isPinned?: boolean
+  onTogglePin?: () => void
 }
 
 function SourceCitations({ results }: { results: SearchResultItem[] }) {
@@ -129,7 +131,7 @@ function CodeBlock({ language, value }: { language: string; value: string }) {
   )
 }
 
-export function AssistantMessage({ message, onRegenerate }: AssistantMessageProps) {
+export function AssistantMessage({ message, onRegenerate, isPinned, onTogglePin }: AssistantMessageProps) {
   const showThinking = Boolean(
     message.thinkingText ||
     message.isSearching ||
@@ -138,7 +140,7 @@ export function AssistantMessage({ message, onRegenerate }: AssistantMessageProp
   )
 
   return (
-    <div className="flex w-full gap-3 my-5 group">
+    <div className={`flex w-full gap-3 my-5 group ${isPinned ? "relative pl-3 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-amber-400 before:rounded-full" : ""}`}>
       {/* Nexora AI Icon Avatar */}
       <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 p-0.5 shadow-lg shrink-0 flex items-center justify-center">
         <div className="h-full w-full rounded-[10px] bg-[#05070B] flex items-center justify-center">
@@ -147,13 +149,21 @@ export function AssistantMessage({ message, onRegenerate }: AssistantMessageProp
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden max-w-full">
-        {/* Agent Status Badge */}
-        {message.statusLabel && (
-          <div className="mb-1 text-xs text-emerald-400/80 font-mono flex items-center gap-1.5 animate-pulse">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-            <span>{message.statusLabel}</span>
-          </div>
-        )}
+        {/* Pinned & Status Badges */}
+        <div className="flex items-center gap-2 mb-1">
+          {isPinned && (
+            <div className="flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-md border border-amber-400/20">
+              <Pin className="h-2.5 w-2.5 fill-amber-400/40 rotate-45" />
+              <span>Pinned</span>
+            </div>
+          )}
+          {message.statusLabel && (
+            <div className="text-xs text-emerald-400/80 font-mono flex items-center gap-1.5 animate-pulse">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+              <span>{message.statusLabel}</span>
+            </div>
+          )}
+        </div>
 
         {/* Optional Thinking state & Search status */}
         {showThinking && (
@@ -240,7 +250,14 @@ export function AssistantMessage({ message, onRegenerate }: AssistantMessageProp
         {message.ui && <GenerativeUIRenderer ui={message.ui} />}
 
         {/* Action bar */}
-        {message.content && <MessageActions content={message.content} onRegenerate={onRegenerate} />}
+        {message.content && (
+          <MessageActions
+            content={message.content}
+            onRegenerate={onRegenerate}
+            isPinned={isPinned}
+            onTogglePin={onTogglePin}
+          />
+        )}
       </div>
     </div>
   )

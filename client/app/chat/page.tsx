@@ -23,6 +23,8 @@ import {
   updateConversationApi,
   addMessageApi,
 } from "@/lib/api/chat"
+import { fetchPinsApi, pinMessageApi, unpinMessageByMessageIdApi } from "@/lib/api/pin"
+import { PinItem } from "@/types/pin"
 
 function ChatSkeleton() {
   return (
@@ -97,6 +99,10 @@ export default function ChatPage() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false)
   const [showScrollBottom, setShowScrollBottom] = useState<boolean>(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false)
+
+  // Pinned Messages state
+  const [pinnedItems, setPinnedItems] = useState<PinItem[]>([])
+  const [pinnedMessageIds, setPinnedMessageIds] = useState<Set<string>>(new Set())
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -246,6 +252,62 @@ export default function ChatPage() {
       })
     } catch (err) {
       console.error("Failed to update pin state:", err)
+    }
+  }
+
+  // Load pinned messages whenever activeId changes
+  useEffect(() => {
+    if (!activeId) {
+      setPinnedItems([])
+      setPinnedMessageIds(new Set())
+      return
+    }
+
+    const loadPins = async () => {
+      try {
+        const pins = await fetchPinsApi(activeId)
+        setPinnedItems(pins)
+        setPinnedMessageIds(new Set(pins.map((p) => p.message_id)))
+      } catch (err) {
+        console.error("Failed to load pinned messages:", err)
+      }
+    }
+
+    loadPins()
+  }, [activeId])
+
+  // Pin / Unpin Individual Message
+  const handleTogglePinMessage = async (messageId: string) => {
+    if (!activeId) return
+    const isCurrentlyPinned = pinnedMessageIds.has(messageId)
+    try {
+      if (isCurrentlyPinned) {
+        await unpinMessageByMessageIdApi(messageId, activeId)
+        setPinnedMessageIds((prev) => {
+          const next = new Set(prev)
+          next.delete(messageId)
+          return next
+        })
+        setPinnedItems((prev) => prev.filter((p) => p.message_id !== messageId))
+      } else {
+        const newPin = await pinMessageApi(activeId, messageId)
+        setPinnedMessageIds((prev) => new Set(prev).add(messageId))
+        setPinnedItems((prev) => [newPin, ...prev])
+      }
+    } catch (err) {
+      console.error("Failed to toggle pin for message:", err)
+    }
+  }
+
+  // Scroll to a pinned message
+  const handleSelectPinnedMessage = (messageId: string) => {
+    const el = document.getElementById(`msg-${messageId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" })
+      el.classList.add("ring-2", "ring-amber-400", "rounded-2xl", "transition-all")
+      setTimeout(() => {
+        el.classList.remove("ring-2", "ring-amber-400", "rounded-2xl")
+      }, 2000)
     }
   }
 
@@ -523,6 +585,9 @@ export default function ChatPage() {
           setSelectedModel={setSelectedModel}
           onToggleMobileSidebar={() => setMobileSidebarOpen(true)}
           onNewChat={handleNewChat}
+          pinnedCount={pinnedItems.length}
+          pinnedItems={pinnedItems}
+          onSelectPinnedMessage={handleSelectPinnedMessage}
         />
 
         {/* Scrollable Messages Area Wrapper */}
@@ -537,10 +602,23 @@ export default function ChatPage() {
             ) : isLoading ? (
               <div className="max-w-4xl mx-auto space-y-6 pb-8">
                 {activeMessages.map((msg) => {
+                  const isMsgPinned = pinnedMessageIds.has(msg.id)
                   if (msg.role === "user") {
-                    return <UserMessage key={msg.id} content={msg.content} />
+                    return (
+                      <div key={msg.id} id={`msg-${msg.id}`}>
+                        <UserMessage content={msg.content} />
+                      </div>
+                    )
                   } else {
-                    return <AssistantMessage key={msg.id} message={msg} />
+                    return (
+                      <div key={msg.id} id={`msg-${msg.id}`}>
+                        <AssistantMessage
+                          message={msg}
+                          isPinned={isMsgPinned}
+                          onTogglePin={() => handleTogglePinMessage(msg.id)}
+                        />
+                      </div>
+                    )
                   }
                 })}
                 <div ref={messagesEndRef} />
@@ -574,10 +652,23 @@ export default function ChatPage() {
                 className="max-w-4xl mx-auto space-y-6 pb-8"
               >
                 {activeMessages.map((msg) => {
+                  const isMsgPinned = pinnedMessageIds.has(msg.id)
                   if (msg.role === "user") {
-                    return <UserMessage key={msg.id} content={msg.content} />
+                    return (
+                      <div key={msg.id} id={`msg-${msg.id}`}>
+                        <UserMessage content={msg.content} />
+                      </div>
+                    )
                   } else {
-                    return <AssistantMessage key={msg.id} message={msg} />
+                    return (
+                      <div key={msg.id} id={`msg-${msg.id}`}>
+                        <AssistantMessage
+                          message={msg}
+                          isPinned={isMsgPinned}
+                          onTogglePin={() => handleTogglePinMessage(msg.id)}
+                        />
+                      </div>
+                    )
                   }
                 })}
                 <div ref={messagesEndRef} />

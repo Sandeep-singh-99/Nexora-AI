@@ -21,6 +21,12 @@ from app.schemas.memory import (
     UserMemoryResponse,
     UserMemoryListResponse,
 )
+from app.schemas.pin import (
+    PinCreate,
+    PinUpdate,
+    PinResponse,
+    PinListResponse,
+)
 
 __all__ = [
     "RegisterRequest",
@@ -40,4 +46,9 @@ __all__ = [
     "UserMemoryCreate",
     "UserMemoryResponse",
     "UserMemoryListResponse",
+    "PinCreate",
+    "PinUpdate",
+    "PinResponse",
+    "PinListResponse",
 ]
+

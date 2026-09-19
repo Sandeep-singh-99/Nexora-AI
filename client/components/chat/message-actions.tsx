@@ -1,16 +1,18 @@
 "use client"
 
 import React, { useState } from "react"
-import { Copy, Check, RotateCw, ThumbsUp, ThumbsDown, MoreHorizontal, Share2 } from "lucide-react"
+import { Copy, Check, RotateCw, ThumbsUp, ThumbsDown, MoreHorizontal, Share2, Pin } from "lucide-react"
 import { Tooltip } from "@/components/ui/tooltip"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 
 interface MessageActionsProps {
   content: string
   onRegenerate?: () => void
+  isPinned?: boolean
+  onTogglePin?: () => void
 }
 
-export function MessageActions({ content, onRegenerate }: MessageActionsProps) {
+export function MessageActions({ content, onRegenerate, isPinned, onTogglePin }: MessageActionsProps) {
   const [copied, setCopied] = useState(false)
   const [liked, setLiked] = useState<boolean | null>(null)
 
@@ -72,6 +74,22 @@ export function MessageActions({ content, onRegenerate }: MessageActionsProps) {
         </button>
       </Tooltip>
 
+      {onTogglePin && (
+        <Tooltip content={isPinned ? "Unpin message" : "Pin message"}>
+          <button
+            onClick={onTogglePin}
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+              isPinned
+                ? "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
+                : "text-slate-400 hover:text-white hover:bg-white/10"
+            }`}
+            aria-label={isPinned ? "Unpin message" : "Pin message"}
+          >
+            <Pin className={`h-3.5 w-3.5 ${isPinned ? "fill-amber-400/40 rotate-45" : ""}`} />
+          </button>
+        </Tooltip>
+      )}
+
       <DropdownMenu>
         <DropdownMenuTrigger>
           <div className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
@@ -79,6 +97,12 @@ export function MessageActions({ content, onRegenerate }: MessageActionsProps) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="left">
+          {onTogglePin && (
+            <DropdownMenuItem onClick={onTogglePin}>
+              <Pin className={`h-3.5 w-3.5 mr-2 ${isPinned ? "text-amber-400 fill-amber-400/40 rotate-45" : ""}`} />
+              {isPinned ? "Unpin Message" : "Pin Message"}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={handleCopy}>
             <Copy className="h-3.5 w-3.5 mr-2" /> Copy Text
           </DropdownMenuItem>

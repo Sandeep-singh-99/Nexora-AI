@@ -1,5 +1,5 @@
 from app.models.auth import User, RefreshSession, PasswordResetToken
-from app.models.chat_memory import Conversation, Message, UserMemory
+from app.models.chat_memory import Conversation, Message, UserMemory, Pin
 
 __all__ = [
     "User",
@@ -8,4 +8,6 @@ __all__ = [
     "Conversation",
     "Message",
     "UserMemory",
+    "Pin",
 ]
+

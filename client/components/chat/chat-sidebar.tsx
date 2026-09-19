@@ -91,70 +91,119 @@ export function SidebarContent({
               No conversations found.
             </div>
           ) : (
-            filtered.map((item) => {
-              const isActive = item.id === activeId
-              const isLoadingThis = isActive && isMessagesLoading
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => onSelectConversation(item.id)}
-                  className={`group relative flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition-all cursor-pointer ${
-                    isActive
-                      ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 shadow-sm"
-                      : "text-slate-300 hover:bg-white/[0.05] hover:text-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 overflow-hidden pr-2 flex-1 min-w-0">
-                    {isLoadingThis ? (
-                      <Loader2 className="h-3.5 w-3.5 shrink-0 text-emerald-400 animate-spin" />
-                    ) : item.isPinned ? (
-                      <Pin className="h-3.5 w-3.5 shrink-0 text-amber-400 fill-amber-400/40 rotate-45" />
-                    ) : (
-                      <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-emerald-400" : "text-slate-500"}`} />
-                    )}
-                    <span className="truncate">{item.title}</span>
-                  </div>
+            (() => {
+              const pinnedItems = filtered.filter((item) => item.isPinned)
+              const unpinnedItems = filtered.filter((item) => !item.isPinned)
 
-                  {/* Dropdown Options on hover/focus/open */}
-                  <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity shrink-0 ml-1">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        className="p-1 rounded-md hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                        title="Options"
-                      >
-                        <MoreHorizontal className="h-3.5 w-3.5" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="right" className="w-32 z-50">
-                        <DropdownMenuItem
-                          onClick={() => onTogglePinConversation?.(item.id, !item.isPinned)}
+              const renderConversationRow = (item: typeof filtered[0]) => {
+                const isActive = item.id === activeId
+                const isLoadingThis = isActive && isMessagesLoading
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => onSelectConversation(item.id)}
+                    className={`group relative flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition-all cursor-pointer ${
+                      isActive
+                        ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 shadow-sm"
+                        : "text-slate-300 hover:bg-white/[0.05] hover:text-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 overflow-hidden pr-2 flex-1 min-w-0">
+                      {isLoadingThis ? (
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 text-emerald-400 animate-spin" />
+                      ) : item.isPinned ? (
+                        <Pin className="h-3.5 w-3.5 shrink-0 text-amber-400 fill-amber-400/40 rotate-45" />
+                      ) : (
+                        <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-emerald-400" : "text-slate-500"}`} />
+                      )}
+                      <span className="truncate">{item.title}</span>
+                    </div>
+
+                    {/* Dropdown Options on hover/focus/open */}
+                    <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity shrink-0 ml-1">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          className="p-1 rounded-md hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                          title="Options"
                         >
-                          <Pin className={`h-3.5 w-3.5 mr-2 ${item.isPinned ? "text-amber-400 fill-amber-400/40 rotate-45" : "text-slate-400"}`} />
-                          <span>{item.isPinned ? "Unpin" : "Pin"}</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            const newTitle = prompt("Enter new title:", item.title)
-                            if (newTitle && onRenameConversation) {
-                              onRenameConversation(item.id, newTitle)
-                            }
-                          }}
-                        >
-                          <Edit3 className="h-3.5 w-3.5 mr-2 text-slate-400" />
-                          <span>Rename</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => onDeleteConversation(item.id)}
-                          className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 mr-2" />
-                          <span>Delete</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          <MoreHorizontal className="h-3.5 w-3.5" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="right" className="w-32 z-50">
+                          <DropdownMenuItem
+                            onClick={() => onTogglePinConversation?.(item.id, !item.isPinned)}
+                          >
+                            <Pin className={`h-3.5 w-3.5 mr-2 ${item.isPinned ? "text-amber-400 fill-amber-400/40 rotate-45" : "text-slate-400"}`} />
+                            <span>{item.isPinned ? "Unpin" : "Pin"}</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              const newTitle = prompt("Enter new title:", item.title)
+                              if (newTitle && onRenameConversation) {
+                                onRenameConversation(item.id, newTitle)
+                              }
+                            }}
+                          >
+                            <Edit3 className="h-3.5 w-3.5 mr-2 text-slate-400" />
+                            <span>Rename</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => onDeleteConversation(item.id)}
+                            className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                            <span>Delete</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
+                )
+              }
+
+              return (
+                <div className="space-y-3">
+                  {/* Pinned Section */}
+                  {pinnedItems.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-400/90">
+                        <Pin className="h-2.5 w-2.5 rotate-45 fill-amber-400/40" />
+                        <span>Pinned</span>
+                        <span className="ml-auto text-[9px] px-1.5 py-0.2 rounded-full bg-amber-400/10 text-amber-300 font-mono">
+                          {pinnedItems.length}
+                        </span>
+                      </div>
+                      {pinnedItems.map(renderConversationRow)}
+                    </div>
+                  )}
+
+                  {/* Separator between Pinned and Other Chats */}
+                  {pinnedItems.length > 0 && unpinnedItems.length > 0 && (
+                    <div className="relative py-1">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-white/10" />
+                      </div>
+                      <div className="relative flex justify-center text-[9px] uppercase">
+                        <span className="bg-[#0A0F18] px-2 text-slate-500 font-semibold tracking-wider">
+                          Chats
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Unpinned / Regular Section */}
+                  {unpinnedItems.length > 0 && (
+                    <div className="space-y-1">
+                      {pinnedItems.length === 0 && (
+                        <div className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          Recent
+                        </div>
+                      )}
+                      {unpinnedItems.map(renderConversationRow)}
+                    </div>
+                  )}
                 </div>
               )
-            })
+            })()
           )}
         </div>
       </div>

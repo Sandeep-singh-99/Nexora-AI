@@ -1,16 +1,20 @@
 "use client"
 
 import React, { useState } from "react"
-import { Menu, Sparkles, ChevronDown, Plus, Share2, MoreVertical, Zap, Bot, Brain } from "lucide-react"
+import { Menu, Sparkles, ChevronDown, Plus, Share2, MoreVertical, Zap, Bot, Brain, Pin } from "lucide-react"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { PinItem } from "@/types/pin"
 
 interface ChatHeaderProps {
   onToggleMobileSidebar: () => void
   onNewChat: () => void
   selectedModel: string
   setSelectedModel: (model: string) => void
+  pinnedCount?: number
+  pinnedItems?: PinItem[]
+  onSelectPinnedMessage?: (messageId: string) => void
 }
 
 const MODELS = [
@@ -25,6 +29,9 @@ export function ChatHeader({
   onNewChat,
   selectedModel,
   setSelectedModel,
+  pinnedCount = 0,
+  pinnedItems = [],
+  onSelectPinnedMessage,
 }: ChatHeaderProps) {
   const currentModel = MODELS.find((m) => m.id === selectedModel) || MODELS[0]
 
@@ -78,6 +85,48 @@ export function ChatHeader({
 
       {/* Header Actions */}
       <div className="flex items-center gap-2">
+        {/* Pinned Messages Trigger */}
+        {pinnedCount > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger>
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 text-xs font-semibold cursor-pointer transition-all"
+                title={`${pinnedCount} pinned messages`}
+              >
+                <Pin className="h-3.5 w-3.5 fill-amber-400/40 rotate-45" />
+                <span className="hidden sm:inline">Pinned</span>
+                <span className="text-[10px] bg-amber-400/20 px-1.5 rounded-full font-mono">{pinnedCount}</span>
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="right" className="w-80 max-h-96 overflow-y-auto">
+              <DropdownMenuLabel className="text-amber-400 font-semibold text-xs flex items-center gap-1.5">
+                <Pin className="h-3.5 w-3.5 rotate-45 fill-amber-400/40" />
+                <span>Pinned Messages ({pinnedCount})</span>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {pinnedItems.map((pin) => (
+                <DropdownMenuItem
+                  key={pin.id}
+                  onClick={() => onSelectPinnedMessage?.(pin.message_id)}
+                  className="flex flex-col items-start gap-1 p-2.5 cursor-pointer hover:bg-white/5 transition-colors border-b border-white/5 last:border-0"
+                >
+                  <span className="text-xs text-slate-200 line-clamp-3 leading-relaxed">
+                    {pin.message?.content || pin.note || "Pinned Message"}
+                  </span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[9px] uppercase tracking-wider text-emerald-400 font-mono">
+                      {pin.message?.role || "message"}
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      {new Date(pin.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
         <Button
           variant="outline"
           size="sm"
