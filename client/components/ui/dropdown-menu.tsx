@@ -28,10 +28,12 @@ export function DropdownMenuTrigger({
   children,
   className,
   onClick,
+  title,
 }: {
   children: React.ReactNode
   className?: string
   onClick?: (e: React.MouseEvent) => void
+  title?: string
 }) {
   const context = React.useContext(DropdownMenuContext)
   if (!context) throw new Error("DropdownMenuTrigger must be used within DropdownMenu")
@@ -39,6 +41,7 @@ export function DropdownMenuTrigger({
   return (
     <div
       ref={context.triggerRef}
+      title={title}
       onClick={(e) => {
         e.stopPropagation()
         onClick?.(e)

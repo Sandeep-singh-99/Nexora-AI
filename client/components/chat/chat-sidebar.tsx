@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import { ConversationSession } from "@/types/chat"
-import { Plus, Search, MessageSquare, Trash2, Edit3, Settings, User, Sparkles, MoreHorizontal, X, Loader2 } from "lucide-react"
+import { Plus, Search, MessageSquare, Trash2, Edit3, Settings, User, Sparkles, MoreHorizontal, X, Loader2, Pin } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
@@ -17,6 +17,7 @@ interface ChatSidebarProps {
   onNewChat: () => void
   onDeleteConversation: (id: string) => void
   onRenameConversation?: (id: string, newTitle: string) => void
+  onTogglePinConversation?: (id: string, isPinned: boolean) => void
   onOpenSettings?: () => void
   isOpenMobile?: boolean
   onCloseMobile?: () => void
@@ -31,6 +32,7 @@ export function SidebarContent({
   onNewChat,
   onDeleteConversation,
   onRenameConversation,
+  onTogglePinConversation,
   onOpenSettings,
   isMessagesLoading,
 }: ChatSidebarProps) {
@@ -44,9 +46,6 @@ export function SidebarContent({
   const filtered = conversations.filter((c) =>
     c.title.toLowerCase().includes(searchQuery.toLowerCase())
   )
-
-  const categories = ["Today", "Yesterday", "Previous 7 Days"] as const
-
   return (
     <div className="flex h-full w-full flex-col justify-between bg-[#05070B] p-4 text-slate-200 border-r border-white/10">
       {/* Top Header & Branding */}
@@ -86,76 +85,73 @@ export function SidebarContent({
         </div>
 
         {/* Conversations List */}
-        <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1 pb-16 scrollbar-thin">
+        <div className="space-y-1 max-h-[calc(100vh-280px)] overflow-y-auto pr-1 pb-16 scrollbar-thin">
           {filtered.length === 0 ? (
             <div className="px-3 py-4 text-center text-xs text-slate-500">
               No conversations found.
             </div>
           ) : (
-            categories.map((cat) => {
-              const items = filtered.filter((c) => (c.category || "Today") === cat)
-              if (items.length === 0) return null
-
+            filtered.map((item) => {
+              const isActive = item.id === activeId
+              const isLoadingThis = isActive && isMessagesLoading
               return (
-                <div key={cat} className="space-y-1">
-                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-2 block">
-                    {cat}
-                  </span>
-                  {items.map((item) => {
-                    const isActive = item.id === activeId
-                    const isLoadingThis = isActive && isMessagesLoading
-                    return (
-                      <div
-                        key={item.id}
-                        onClick={() => onSelectConversation(item.id)}
-                        className={`group relative flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition-all cursor-pointer ${
-                          isActive
-                            ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 shadow-sm"
-                            : "text-slate-300 hover:bg-white/[0.05] hover:text-white"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 overflow-hidden pr-2 flex-1 min-w-0">
-                          {isLoadingThis ? (
-                            <Loader2 className="h-3.5 w-3.5 shrink-0 text-emerald-400 animate-spin" />
-                          ) : (
-                            <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-emerald-400" : "text-slate-500"}`} />
-                          )}
-                          <span className="truncate">{item.title}</span>
-                        </div>
+                <div
+                  key={item.id}
+                  onClick={() => onSelectConversation(item.id)}
+                  className={`group relative flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 shadow-sm"
+                      : "text-slate-300 hover:bg-white/[0.05] hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 overflow-hidden pr-2 flex-1 min-w-0">
+                    {isLoadingThis ? (
+                      <Loader2 className="h-3.5 w-3.5 shrink-0 text-emerald-400 animate-spin" />
+                    ) : item.isPinned ? (
+                      <Pin className="h-3.5 w-3.5 shrink-0 text-amber-400 fill-amber-400/40 rotate-45" />
+                    ) : (
+                      <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-emerald-400" : "text-slate-500"}`} />
+                    )}
+                    <span className="truncate">{item.title}</span>
+                  </div>
 
-                        {/* Dropdown Options on hover/focus/open */}
-                        <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity shrink-0 ml-1">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              className="p-1 rounded-md hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                            >
-                              <MoreHorizontal className="h-3.5 w-3.5" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="right" className="w-32 z-50">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  const newTitle = prompt("Enter new title:", item.title)
-                                  if (newTitle && onRenameConversation) {
-                                    onRenameConversation(item.id, newTitle)
-                                  }
-                                }}
-                              >
-                                <Edit3 className="h-3.5 w-3.5 mr-2 text-slate-400" />
-                                <span>Rename</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => onDeleteConversation(item.id)}
-                                className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
-                              >
-                                <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                <span>Delete</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    )
-                  })}
+                  {/* Dropdown Options on hover/focus/open */}
+                  <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity shrink-0 ml-1">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        className="p-1 rounded-md hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                        title="Options"
+                      >
+                        <MoreHorizontal className="h-3.5 w-3.5" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="right" className="w-32 z-50">
+                        <DropdownMenuItem
+                          onClick={() => onTogglePinConversation?.(item.id, !item.isPinned)}
+                        >
+                          <Pin className={`h-3.5 w-3.5 mr-2 ${item.isPinned ? "text-amber-400 fill-amber-400/40 rotate-45" : "text-slate-400"}`} />
+                          <span>{item.isPinned ? "Unpin" : "Pin"}</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            const newTitle = prompt("Enter new title:", item.title)
+                            if (newTitle && onRenameConversation) {
+                              onRenameConversation(item.id, newTitle)
+                            }
+                          }}
+                        >
+                          <Edit3 className="h-3.5 w-3.5 mr-2 text-slate-400" />
+                          <span>Rename</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onDeleteConversation(item.id)}
+                          className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-2" />
+                          <span>Delete</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               )
             })

@@ -230,6 +230,25 @@ export default function ChatPage() {
     }
   }
 
+  // Pin / Unpin Conversation
+  const handleTogglePinConversation = async (id: string, isPinned: boolean) => {
+    try {
+      await updateConversationApi(id, { is_pinned: isPinned })
+      setConversations((prev) => {
+        const updated = prev.map((c) =>
+          c.id === id ? { ...c, isPinned } : c
+        )
+        return [...updated].sort((a, b) => {
+          if (a.isPinned && !b.isPinned) return -1
+          if (!a.isPinned && b.isPinned) return 1
+          return 0
+        })
+      })
+    } catch (err) {
+      console.error("Failed to update pin state:", err)
+    }
+  }
+
   // Delete Single Conversation
   const handleDeleteConversation = async (id: string) => {
     try {
@@ -488,6 +507,7 @@ export default function ChatPage() {
         onNewChat={handleNewChat}
         onDeleteConversation={handleDeleteConversation}
         onRenameConversation={handleRenameConversation}
+        onTogglePinConversation={handleTogglePinConversation}
         onOpenSettings={() => setIsSettingsOpen(true)}
         isOpenMobile={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
