@@ -1,5 +1,8 @@
+import logging
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
+
+logger = logging.getLogger(__name__)
 
 from app.ai.core.state import AgentState
 from app.ai.middleware.abuse_filter import (
@@ -72,3 +75,17 @@ builder.add_edge("output_guardrail", END)
 
 memory = MemorySaver()
 ai_graph = builder.compile(checkpointer=memory)
+
+
+async def clear_thread_memory(thread_id: str) -> bool:
+    """Clear in-memory checkpointer state for a specific thread."""
+    try:
+        if hasattr(memory, "adelete_thread"):
+            await memory.adelete_thread(str(thread_id))
+            return True
+        elif hasattr(memory, "delete_thread"):
+            memory.delete_thread(str(thread_id))
+            return True
+    except Exception as e:
+        logger.warning("Failed to clear thread memory for %s: %s", thread_id, e)
+    return False

@@ -103,6 +103,19 @@ async def delete_conversation(
     return None
 
 
+@router.delete("/conversations", status_code=status.HTTP_200_OK)
+async def delete_all_conversations(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete all conversations for the current user."""
+    count = await ChatService.delete_all_conversations(
+        db=db,
+        user_id=current_user.id,
+    )
+    return {"message": f"Successfully deleted {count} conversations", "count": count}
+
+
 @router.get("/conversations/{conversation_id}/messages", response_model=List[MessageResponse])
 async def get_messages(
     conversation_id: UUID,

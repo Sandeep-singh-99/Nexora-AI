@@ -83,6 +83,42 @@ async def get_current_active_verified_user(
     return current_user
 
 
+async def get_optional_current_user(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    """
+    Optionally authenticate request. Returns User if valid token is provided, otherwise None.
+    Does not raise 401 for unauthenticated requests.
+    """
+    token: Optional[str] = None
+
+    auth_header = request.headers.get("authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+
+    if not token:
+        token = request.cookies.get("access_token")
+
+    if not token:
+        return None
+
+    try:
+        payload = decode_token(token, expected_type="access")
+        user_id = UUID(payload["sub"])
+    except (jwt.PyJWTError, KeyError, ValueError):
+        return None
+
+    stmt = select(User).where(User.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if not user or not user.is_active:
+        return None
+
+    return user
+
+
 async def verify_csrf_protection(request: Request) -> None:
     """
     CSRF Protection for Web clients using Double-Submit Cookie pattern on state-changing methods.

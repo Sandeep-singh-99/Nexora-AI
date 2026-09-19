@@ -111,7 +111,38 @@ class ChatService:
 
         await db.delete(conversation)
         await db.commit()
+
+        # Purge AI LangGraph checkpointer memory if present
+        try:
+            from app.ai.graph import clear_thread_memory
+            await clear_thread_memory(str(conversation_id))
+        except Exception:
+            pass
+
         return True
+
+    @staticmethod
+    async def delete_all_conversations(
+        db: AsyncSession,
+        user_id: UUID,
+    ) -> int:
+        """Delete all conversations for a user and clear their checkpointer state."""
+        stmt = select(Conversation.id).where(Conversation.user_id == user_id)
+        result = await db.execute(stmt)
+        conv_ids = list(result.scalars().all())
+
+        delete_stmt = delete(Conversation).where(Conversation.user_id == user_id)
+        await db.execute(delete_stmt)
+        await db.commit()
+
+        try:
+            from app.ai.graph import clear_thread_memory
+            for cid in conv_ids:
+                await clear_thread_memory(str(cid))
+        except Exception:
+            pass
+
+        return len(conv_ids)
 
     @staticmethod
     async def add_message(

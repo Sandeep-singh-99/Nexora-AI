@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
-from sqlalchemy import String, Text, ForeignKey, DateTime, Integer, Boolean, Float, Index
+from sqlalchemy import String, Text, ForeignKey, DateTime, Integer, Boolean, Float, Index, JSON
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from pgvector.sqlalchemy import Vector
@@ -95,7 +95,7 @@ class Message(Base):
     )
     extra_metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(
         "metadata",
-        JSONB,
+        JSON().with_variant(JSONB, "postgresql"),
         nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(

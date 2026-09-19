@@ -86,7 +86,7 @@ export function SidebarContent({
         </div>
 
         {/* Conversations List */}
-        <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1 scrollbar-thin">
+        <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1 pb-16 scrollbar-thin">
           {filtered.length === 0 ? (
             <div className="px-3 py-4 text-center text-xs text-slate-500">
               No conversations found.
@@ -114,7 +114,7 @@ export function SidebarContent({
                             : "text-slate-300 hover:bg-white/[0.05] hover:text-white"
                         }`}
                       >
-                        <div className="flex items-center gap-2 overflow-hidden pr-2">
+                        <div className="flex items-center gap-2 overflow-hidden pr-2 flex-1 min-w-0">
                           {isLoadingThis ? (
                             <Loader2 className="h-3.5 w-3.5 shrink-0 text-emerald-400 animate-spin" />
                           ) : (
@@ -123,18 +123,15 @@ export function SidebarContent({
                           <span className="truncate">{item.title}</span>
                         </div>
 
-                        {/* Dropdown Options on hover */}
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* Dropdown Options on hover/focus/open */}
+                        <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity shrink-0 ml-1">
                           <DropdownMenu>
-                            <DropdownMenuTrigger>
-                              <div
-                                onClick={(e) => e.stopPropagation()}
-                                className="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-white"
-                              >
-                                <MoreHorizontal className="h-3.5 w-3.5" />
-                              </div>
+                            <DropdownMenuTrigger
+                              className="p-1 rounded-md hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                            >
+                              <MoreHorizontal className="h-3.5 w-3.5" />
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="right">
+                            <DropdownMenuContent align="right" className="w-32 z-50">
                               <DropdownMenuItem
                                 onClick={() => {
                                   const newTitle = prompt("Enter new title:", item.title)
@@ -143,13 +140,15 @@ export function SidebarContent({
                                   }
                                 }}
                               >
-                                <Edit3 className="h-3.5 w-3.5 mr-2" /> Rename
+                                <Edit3 className="h-3.5 w-3.5 mr-2 text-slate-400" />
+                                <span>Rename</span>
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => onDeleteConversation(item.id)}
-                                className="text-rose-400 hover:text-rose-300"
+                                className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
                               >
-                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                <span>Delete</span>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

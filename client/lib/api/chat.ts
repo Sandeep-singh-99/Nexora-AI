@@ -30,6 +30,11 @@ export async function deleteConversationApi(id: string): Promise<void> {
   await api.delete(`/chat/conversations/${id}`);
 }
 
+export async function deleteAllConversationsApi(): Promise<{ message: string; count: number }> {
+  const response = await api.delete<{ message: string; count: number }>("/chat/conversations");
+  return response.data;
+}
+
 export async function fetchConversationMessagesApi(id: string, limit = 100): Promise<ApiMessage[]> {
   const response = await api.get<ApiMessage[]>(`/chat/conversations/${id}/messages`, {
     params: { limit },

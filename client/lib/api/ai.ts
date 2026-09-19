@@ -32,10 +32,23 @@ export type SSEEvent =
   | { type: "end" }
   | { type: "error"; message: string };
 
+export interface DeleteAiConversationResponse {
+  success: boolean;
+  message: string;
+  thread_id: string;
+}
+
 export const sendChatMessageApi = async (
   data: ChatRequest
 ): Promise<ChatResponse> => {
   const response = await api.post<ChatResponse>("/ai/chat", data);
+  return response.data;
+};
+
+export const deleteAiChatConversationApi = async (
+  threadId: string
+): Promise<DeleteAiConversationResponse> => {
+  const response = await api.delete<DeleteAiConversationResponse>(`/ai/chat/${threadId}`);
   return response.data;
 };
 

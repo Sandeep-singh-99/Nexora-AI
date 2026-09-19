@@ -2,12 +2,21 @@ import json
 import logging
 import asyncio
 from urllib.parse import urlparse
-from fastapi import APIRouter, HTTPException, Request
+from uuid import UUID
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from langchain_core.messages import HumanMessage
-from app.schemas.ai import ChatRequest, ChatResponse
-from app.ai.graph import ai_graph
+from app.core.database import get_db
+from app.dependencies.auth import get_optional_current_user
+from app.models.auth import User
+from app.models.chat_memory import Conversation
+from app.schemas.ai import ChatRequest, ChatResponse, DeleteConversationResponse
+from app.services.chat_service import ChatService
+from app.ai.graph import ai_graph, clear_thread_memory, memory
 from app.ai.guardrails.input_filter import validate_input, AbuseFilterError
 
 logger = logging.getLogger(__name__)
@@ -385,3 +394,70 @@ async def chat(request: ChatRequest):
             status_code=500,
             detail=f"AI request failed: {str(e)}",
         )
+
+
+@router.delete("/chat/conversation/{conversation_id}", response_model=DeleteConversationResponse)
+@router.delete("/chat/{conversation_id}", response_model=DeleteConversationResponse)
+async def delete_ai_chat_conversation(
+    conversation_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+):
+    """
+    Delete an AI chat conversation thread.
+    Cleans up persistent database conversation records (if user owns it)
+    and removes in-memory LangGraph checkpointer state.
+    """
+    target_id = conversation_id.strip()
+    if not target_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Conversation ID or thread ID cannot be empty",
+        )
+
+    is_uuid = False
+    parsed_uuid: Optional[UUID] = None
+    try:
+        parsed_uuid = UUID(target_id)
+        is_uuid = True
+    except (ValueError, AttributeError):
+        is_uuid = False
+
+    # Check if target matches a persisted database conversation
+    if is_uuid and parsed_uuid:
+        stmt = select(Conversation).where(Conversation.id == parsed_uuid)
+        result = await db.execute(stmt)
+        conversation = result.scalar_one_or_none()
+
+        if conversation:
+            if not current_user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Authentication required to delete stored conversation",
+                )
+            if conversation.user_id != current_user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You do not have permission to delete this conversation",
+                )
+            # Delete conversation and all cascading messages
+            await ChatService.delete_conversation(
+                db=db,
+                conversation_id=parsed_uuid,
+                user_id=current_user.id,
+            )
+        elif current_user and target_id not in getattr(memory, "storage", {}):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found",
+            )
+
+    # Purge checkpointer memory from LangGraph
+    await clear_thread_memory(target_id)
+
+    return DeleteConversationResponse(
+        success=True,
+        message="AI chat conversation deleted successfully",
+        thread_id=target_id,
+    )

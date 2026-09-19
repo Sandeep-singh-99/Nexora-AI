@@ -6,16 +6,20 @@ import { cn } from "@/lib/utils"
 interface DropdownMenuContextType {
   open: boolean
   setOpen: React.Dispatch<React.SetStateAction<boolean>>
+  triggerRef: React.RefObject<HTMLDivElement | null>
 }
 
 const DropdownMenuContext = React.createContext<DropdownMenuContextType | null>(null)
 
 export function DropdownMenu({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false)
+  const triggerRef = React.useRef<HTMLDivElement>(null)
 
   return (
-    <DropdownMenuContext.Provider value={{ open, setOpen }}>
-      <div className="relative inline-block text-left">{children}</div>
+    <DropdownMenuContext.Provider value={{ open, setOpen, triggerRef }}>
+      <div className="relative inline-block text-left" data-state={open ? "open" : "closed"}>
+        {children}
+      </div>
     </DropdownMenuContext.Provider>
   )
 }
@@ -23,17 +27,24 @@ export function DropdownMenu({ children }: { children: React.ReactNode }) {
 export function DropdownMenuTrigger({
   children,
   className,
+  onClick,
 }: {
   children: React.ReactNode
   className?: string
+  onClick?: (e: React.MouseEvent) => void
 }) {
   const context = React.useContext(DropdownMenuContext)
   if (!context) throw new Error("DropdownMenuTrigger must be used within DropdownMenu")
 
   return (
     <div
-      onClick={() => context.setOpen((prev) => !prev)}
-      className={cn("cursor-pointer", className)}
+      ref={context.triggerRef}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick?.(e)
+        context.setOpen((prev) => !prev)
+      }}
+      className={cn("cursor-pointer inline-flex items-center", className)}
     >
       {children}
     </div>
@@ -56,7 +67,11 @@ export function DropdownMenuContent({
 
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
+      if (
+        ref.current &&
+        !ref.current.contains(event.target as Node) &&
+        !context?.triggerRef.current?.contains(event.target as Node)
+      ) {
         context?.setOpen(false)
       }
     }
@@ -66,7 +81,7 @@ export function DropdownMenuContent({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside)
     }
-  }, [context])
+  }, [context.open, context])
 
   if (!context.open) return null
 
@@ -79,6 +94,7 @@ export function DropdownMenuContent({
   return (
     <div
       ref={ref}
+      onClick={(e) => e.stopPropagation()}
       className={cn(
         "absolute top-full mt-2 z-50 min-w-[12rem] rounded-xl border border-white/10 bg-[#0D131D] p-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-150",
         alignClasses[align],
@@ -97,7 +113,7 @@ export function DropdownMenuItem({
   disabled,
 }: {
   children: React.ReactNode
-  onClick?: () => void
+  onClick?: (e: React.MouseEvent) => void
   className?: string
   disabled?: boolean
 }) {
@@ -105,10 +121,12 @@ export function DropdownMenuItem({
 
   return (
     <button
+      type="button"
       disabled={disabled}
-      onClick={() => {
+      onClick={(e) => {
+        e.stopPropagation()
         if (disabled) return
-        onClick?.()
+        onClick?.(e)
         context?.setOpen(false)
       }}
       className={cn(
