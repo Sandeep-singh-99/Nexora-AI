@@ -38,6 +38,21 @@ class Settings:
 
     TAVILY_SEARCH: str = os.getenv("TAVILY_API_KEY", "")
 
+    # LangSmith Observability & Tracing
+    LANGSMITH_TRACING: bool = (
+        os.getenv("LANGSMITH_TRACING", "false").lower() == "true"
+        or os.getenv("LANGCHAIN_TRACING_V2", "false").lower() == "true"
+    )
+    LANGSMITH_API_KEY: str = (
+        os.getenv("LANGSMITH_API_KEY", "") or os.getenv("LANGCHAIN_API_KEY", "")
+    )
+    LANGSMITH_PROJECT: str = (
+        os.getenv("LANGSMITH_PROJECT", "") or os.getenv("LANGCHAIN_PROJECT", "Nexora")
+    )
+    LANGSMITH_ENDPOINT: str = (
+        os.getenv("LANGSMITH_ENDPOINT", "")
+        or os.getenv("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
+    )
 
     # Frontend
     FRONTEND_URL: str = os.getenv(
@@ -95,3 +110,21 @@ class Settings:
 
 
 settings = Settings()
+
+
+def configure_langsmith() -> None:
+    """Ensure LangSmith and LangChain tracing environment variables are properly synchronized."""
+    if settings.LANGSMITH_API_KEY:
+        tracing_val = "true" if settings.LANGSMITH_TRACING else "false"
+        os.environ["LANGCHAIN_TRACING_V2"] = tracing_val
+        os.environ["LANGSMITH_TRACING"] = tracing_val
+        os.environ["LANGCHAIN_API_KEY"] = settings.LANGSMITH_API_KEY
+        os.environ["LANGSMITH_API_KEY"] = settings.LANGSMITH_API_KEY
+        os.environ["LANGCHAIN_PROJECT"] = settings.LANGSMITH_PROJECT
+        os.environ["LANGSMITH_PROJECT"] = settings.LANGSMITH_PROJECT
+        if settings.LANGSMITH_ENDPOINT:
+            os.environ["LANGCHAIN_ENDPOINT"] = settings.LANGSMITH_ENDPOINT
+            os.environ["LANGSMITH_ENDPOINT"] = settings.LANGSMITH_ENDPOINT
+
+
+configure_langsmith()

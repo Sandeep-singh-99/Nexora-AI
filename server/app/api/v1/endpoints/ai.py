@@ -133,7 +133,12 @@ def extract_tavily_results(tool_output) -> list[dict]:
     return results
 
 
-async def event_generator(request: Request, message: str, thread_id: str):
+async def event_generator(
+    request: Request,
+    message: str,
+    thread_id: str,
+    user_id: Optional[str] = None,
+):
     """Streams thinking steps, search queries & results, guardrails status, and LLM response tokens.
     
     Monitors client connection state to stop execution immediately when the user clicks 'Stop'.
@@ -141,6 +146,13 @@ async def event_generator(request: Request, message: str, thread_id: str):
     config = {
         "configurable": {"thread_id": thread_id},
         "recursion_limit": 100,
+        "run_name": "Nexora Chat Stream",
+        "tags": ["nexora", "chat", "streaming"],
+        "metadata": {
+            "thread_id": thread_id,
+            "user_id": user_id or "anonymous",
+            "source": "api_chat_stream",
+        },
     }
     input_data = {"messages": [HumanMessage(content=message)]}
 
@@ -330,15 +342,27 @@ async def event_generator(request: Request, message: str, thread_id: str):
         yield f"data: {err_payload}\n\n"
 
 
+@router.get("/langsmith/status", tags=["AI"])
+async def get_langsmith_status():
+    """Returns the current LangSmith integration status and connectivity."""
+    from app.ai.core.langsmith import check_langsmith_connection
+    return check_langsmith_connection()
+
+
 @router.post("/chat/stream")
-async def chat_stream(request_data: ChatRequest, request: Request):
+async def chat_stream(
+    request_data: ChatRequest,
+    request: Request,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+):
     """SSE Streaming Endpoint supporting Cancellation, Guardrails, Tavily Search, Thinking, and Tokens."""
     try:
         validate_input(request_data.message)
         thread_id = request_data.thread_id or "default_session"
+        user_id = str(current_user.id) if current_user else "anonymous"
 
         return StreamingResponse(
-            event_generator(request, request_data.message, thread_id),
+            event_generator(request, request_data.message, thread_id, user_id=user_id),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -360,15 +384,26 @@ async def chat_stream(request_data: ChatRequest, request: Request):
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+async def chat(
+    request: ChatRequest,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+):
     """Standard non-streaming JSON endpoint with pre-flight and graph guardrails."""
     try:
         validate_input(request.message)
 
         thread_id = request.thread_id or "default_session"
+        user_id = str(current_user.id) if current_user else "anonymous"
         config = {
             "configurable": {"thread_id": thread_id},
             "recursion_limit": 100,
+            "run_name": "Nexora Chat Invoke",
+            "tags": ["nexora", "chat", "invoke"],
+            "metadata": {
+                "thread_id": thread_id,
+                "user_id": user_id,
+                "source": "api_chat_invoke",
+            },
         }
 
         result = await ai_graph.ainvoke(
