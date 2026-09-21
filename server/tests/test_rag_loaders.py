@@ -17,9 +17,12 @@ def create_in_memory_pdf(text: str = "This is a sample document for testing.") -
     return buffer.getvalue()
 
 
-def create_in_memory_docx(paragraphs: list[str]) -> bytes:
+def create_in_memory_docx(paragraphs: list[str] | str) -> bytes:
     """Creates a valid DOCX in memory using python-docx without writing to disk."""
     import docx
+
+    if isinstance(paragraphs, str):
+        paragraphs = [paragraphs]
 
     doc = docx.Document()
     doc.add_heading("Test Document Heading", level=1)

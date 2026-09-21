@@ -25,7 +25,10 @@ import {
   deleteDocumentApi,
   validateDocumentFile,
   MAX_DOCUMENT_SIZE_BYTES,
+  SensitiveDataFinding,
+  SensitiveDataError,
 } from "@/lib/api/documents"
+import { GuardrailsDialog } from "./guardrails-dialog"
 
 interface DocumentsDialogProps {
   isOpen: boolean
@@ -60,6 +63,10 @@ export function DocumentsDialog({
   const [justUploadedDoc, setJustUploadedDoc] = useState<UserDocument | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [sensitivePrompt, setSensitivePrompt] = useState<{
+    file: File
+    findings: SensitiveDataFinding[]
+  } | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -69,6 +76,7 @@ export function DocumentsDialog({
       setErrorMsg(null)
       setSuccessMsg(null)
       setJustUploadedDoc(null)
+      setSensitivePrompt(null)
     }
   }, [isOpen])
 
@@ -86,7 +94,7 @@ export function DocumentsDialog({
     }
   }
 
-  const handleFileUpload = async (file: File) => {
+  const handleFileUpload = async (file: File, confirmSensitive: boolean = false) => {
     setErrorMsg(null)
     setSuccessMsg(null)
     setJustUploadedDoc(null)
@@ -99,12 +107,19 @@ export function DocumentsDialog({
 
     setIsUploading(true)
     try {
-      const doc = await uploadDocumentApi(file)
+      const doc = await uploadDocumentApi(file, confirmSensitive)
       setDocuments((prev) => [doc, ...prev])
       setJustUploadedDoc(doc)
       setSuccessMsg(`"${file.name}" indexed successfully (${doc.total_chunks} chunks).`)
       onDocumentUploaded?.(doc)
     } catch (err: any) {
+      if (err instanceof SensitiveDataError) {
+        setSensitivePrompt({
+          file,
+          findings: err.payload.findings,
+        })
+        return
+      }
       console.error("Upload error:", err)
       const detail = err.response?.data?.detail || err.message || "Failed to upload document."
       setErrorMsg(detail)
@@ -114,6 +129,21 @@ export function DocumentsDialog({
         fileInputRef.current.value = ""
       }
     }
+  }
+
+  const handleCancelSensitive = () => {
+    setSensitivePrompt(null)
+    setErrorMsg("Upload task cancelled by user. No document data was saved.")
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
+
+  const handleProceedSensitive = async () => {
+    if (!sensitivePrompt) return
+    const fileToUpload = sensitivePrompt.file
+    setSensitivePrompt(null)
+    await handleFileUpload(fileToUpload, true)
   }
 
   const handleDelete = async (docId: string, filename: string) => {
@@ -407,6 +437,16 @@ export function DocumentsDialog({
           </Button>
         </div>
       </div>
+
+      {/* Sensitive Data Guardrails Confirmation Dialog */}
+      <GuardrailsDialog
+        isOpen={!!sensitivePrompt}
+        filename={sensitivePrompt?.file.name || ""}
+        findings={sensitivePrompt?.findings || []}
+        onProceed={handleProceedSensitive}
+        onCancel={handleCancelSensitive}
+        isProcessing={isUploading}
+      />
     </div>
   )
 }

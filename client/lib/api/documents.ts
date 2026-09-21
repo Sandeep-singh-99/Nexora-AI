@@ -36,7 +36,33 @@ export function validateDocumentFile(file: File): { isValid: boolean; error?: st
   return { isValid: true };
 }
 
-export async function uploadDocumentApi(file: File): Promise<UserDocument> {
+export interface SensitiveDataFinding {
+  category: string;
+  count: number;
+  sample: string;
+  pages: number[];
+}
+
+export interface SensitiveDataErrorPayload {
+  error_code: "SENSITIVE_DATA_DETECTED";
+  message: string;
+  filename: string;
+  findings: SensitiveDataFinding[];
+}
+
+export class SensitiveDataError extends Error {
+  payload: SensitiveDataErrorPayload;
+  constructor(payload: SensitiveDataErrorPayload) {
+    super(payload.message || "Sensitive data detected by safety guardrails.");
+    this.name = "SensitiveDataError";
+    this.payload = payload;
+  }
+}
+
+export async function uploadDocumentApi(
+  file: File,
+  confirmSensitive: boolean = false
+): Promise<UserDocument> {
   const validation = validateDocumentFile(file);
   if (!validation.isValid) {
     throw new Error(validation.error || "Invalid file for upload");
@@ -44,14 +70,30 @@ export async function uploadDocumentApi(file: File): Promise<UserDocument> {
 
   const formData = new FormData();
   formData.append("file", file);
+  if (confirmSensitive) {
+    formData.append("confirm_sensitive", "true");
+  }
 
-  const response = await api.post<UserDocument>("/documents/upload", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
+  try {
+    const response = await api.post<UserDocument>("/documents/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
 
-  return response.data;
+    return response.data;
+  } catch (err: any) {
+    const detail = err.response?.data?.detail;
+    if (
+      err.response?.status === 409 &&
+      detail &&
+      typeof detail === "object" &&
+      detail.error_code === "SENSITIVE_DATA_DETECTED"
+    ) {
+      throw new SensitiveDataError(detail as SensitiveDataErrorPayload);
+    }
+    throw err;
+  }
 }
 
 export async function fetchDocumentsApi(): Promise<UserDocument[]> {

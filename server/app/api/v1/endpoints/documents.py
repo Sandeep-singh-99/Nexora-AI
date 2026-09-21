@@ -3,7 +3,7 @@ import logging
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -17,6 +17,8 @@ from app.schemas.document import (
 )
 from app.ai.rag.vector_store import DocumentVectorStore
 from app.ai.rag.rag_agent import run_agentic_rag
+from app.ai.rag.loaders import load_document
+from app.ai.guardrails.document_guardrails import scan_document_sensitive_data
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +32,16 @@ MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB max
 @router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
     file: UploadFile = File(...),
+    confirm_sensitive: bool = Form(False),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
     Upload and ingest a document (PDF or DOCX) into the vector database.
     - Zero permanent storage: Document is processed in memory only.
+    - Guardrails scan: Inspects in-memory text for sensitive PII/secrets.
+    - If sensitive data is found and confirm_sensitive is False, returns HTTP 409
+      with detected findings so client can prompt user to proceed or cancel.
     - Chunks and embeddings are stored in pgvector.
     - Strictly isolated to the authenticated user.
     """
@@ -67,6 +73,30 @@ async def upload_document(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail=f"File exceeds maximum allowed size of {MAX_FILE_SIZE_BYTES // (1024 * 1024)} MB.",
         )
+
+    # In-memory Guardrails scanning for sensitive data
+    try:
+        items = load_document(filename, content_bytes)
+        pages_to_scan = [{"text": it.content, "page": it.page_number} for it in items]
+        has_sensitive, findings = scan_document_sensitive_data(pages_to_scan)
+
+        if has_sensitive and not confirm_sensitive:
+            logger.warning(
+                f"Sensitive data detected in '{filename}' for user {current_user.id}: {len(findings)} categories flagged."
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error_code": "SENSITIVE_DATA_DETECTED",
+                    "message": "Sensitive data detected by Nexora Safety Guardrails. Confirmation required to proceed.",
+                    "filename": filename,
+                    "findings": findings,
+                },
+            )
+    except HTTPException:
+        raise
+    except Exception as scan_err:
+        logger.warning(f"Guardrails scan encountered an issue for '{filename}': {scan_err}")
 
     try:
         doc = await DocumentVectorStore.ingest_document(

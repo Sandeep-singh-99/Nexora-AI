@@ -21,7 +21,10 @@ import {
   uploadDocumentApi,
   validateDocumentFile,
   MAX_DOCUMENT_SIZE_BYTES,
+  SensitiveDataFinding,
+  SensitiveDataError,
 } from "@/lib/api/documents"
+import { GuardrailsDialog } from "./guardrails-dialog"
 import { UserDocument } from "@/types/document"
 
 interface AttachedFileState {
@@ -59,6 +62,11 @@ export function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [attachedFile, setAttachedFile] = useState<AttachedFileState | null>(null)
+  const [sensitivePrompt, setSensitivePrompt] = useState<{
+    file: File
+    findings: SensitiveDataFinding[]
+  } | null>(null)
+  const [isUploadingSensitive, setIsUploadingSensitive] = useState(false)
 
   // Auto-grow textarea
   useEffect(() => {
@@ -74,6 +82,40 @@ export function ChatInput({
       if (input.trim() && !isLoading) {
         onSubmit()
       }
+    }
+  }
+
+  const processFileUpload = async (file: File, confirmSensitive: boolean = false) => {
+    setAttachedFile({
+      file,
+      status: "uploading",
+    })
+
+    try {
+      const doc = await uploadDocumentApi(file, confirmSensitive)
+      setAttachedFile({
+        file,
+        status: "ready",
+        docRecord: doc,
+      })
+      onDocumentAttached?.(doc)
+    } catch (err: any) {
+      if (err instanceof SensitiveDataError) {
+        setSensitivePrompt({
+          file,
+          findings: err.payload.findings,
+        })
+        setAttachedFile(null)
+        return
+      }
+      const msg = err.response?.data?.detail || err.message || "Failed to index document."
+      setAttachedFile({
+        file,
+        status: "error",
+        error: msg,
+      })
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = ""
     }
   }
 
@@ -93,28 +135,24 @@ export function ChatInput({
       return
     }
 
-    setAttachedFile({
-      file,
-      status: "uploading",
-    })
+    await processFileUpload(file, false)
+  }
 
+  const handleCancelSensitive = () => {
+    setSensitivePrompt(null)
+    setAttachedFile(null)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }
+
+  const handleProceedSensitive = async () => {
+    if (!sensitivePrompt) return
+    const fileToUpload = sensitivePrompt.file
+    setSensitivePrompt(null)
+    setIsUploadingSensitive(true)
     try {
-      const doc = await uploadDocumentApi(file)
-      setAttachedFile({
-        file,
-        status: "ready",
-        docRecord: doc,
-      })
-      onDocumentAttached?.(doc)
-    } catch (err: any) {
-      const msg = err.response?.data?.detail || err.message || "Failed to index document."
-      setAttachedFile({
-        file,
-        status: "error",
-        error: msg,
-      })
+      await processFileUpload(fileToUpload, true)
     } finally {
-      if (fileInputRef.current) fileInputRef.current.value = ""
+      setIsUploadingSensitive(false)
     }
   }
 
@@ -357,6 +395,16 @@ export function ChatInput({
       <p className="mt-2 text-center text-[11px] text-slate-500 font-sans">
         Nexora AI • Powered by LangGraph Agentic RAG • 50 MB max per document (zero permanent storage).
       </p>
+
+      {/* Sensitive Data Guardrails Confirmation Dialog */}
+      <GuardrailsDialog
+        isOpen={!!sensitivePrompt}
+        filename={sensitivePrompt?.file.name || ""}
+        findings={sensitivePrompt?.findings || []}
+        onProceed={handleProceedSensitive}
+        onCancel={handleCancelSensitive}
+        isProcessing={isUploadingSensitive}
+      />
     </div>
   )
 }
