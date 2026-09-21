@@ -13,7 +13,9 @@ import { EmptyState } from "@/components/chat/empty-state"
 import { ChatInput } from "@/components/chat/chat-input"
 import { ScrollToBottom } from "@/components/chat/scroll-to-bottom"
 import { SettingsDialog } from "@/components/chat/settings-dialog"
+import { DocumentsDialog } from "@/components/chat/documents-dialog"
 import { ChatMessage, ConversationSession, ApiConversation, ApiMessage } from "@/types/chat"
+import { UserDocument } from "@/types/document"
 import { sendStreamingChatMessageApi } from "@/lib/api/ai"
 import {
   fetchConversationsApi,
@@ -24,7 +26,9 @@ import {
   addMessageApi,
 } from "@/lib/api/chat"
 import { fetchPinsApi, pinMessageApi, unpinMessageByMessageIdApi } from "@/lib/api/pin"
+import { fetchDocumentsApi } from "@/lib/api/documents"
 import { PinItem } from "@/types/pin"
+
 
 function ChatSkeleton() {
   return (
@@ -99,10 +103,14 @@ export default function ChatPage() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false)
   const [showScrollBottom, setShowScrollBottom] = useState<boolean>(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false)
+  const [isDocumentsOpen, setIsDocumentsOpen] = useState<boolean>(false)
+  const [documents, setDocuments] = useState<UserDocument[]>([])
+  const [activeDocument, setActiveDocument] = useState<UserDocument | null>(null)
 
   // Pinned Messages state
   const [pinnedItems, setPinnedItems] = useState<PinItem[]>([])
   const [pinnedMessageIds, setPinnedMessageIds] = useState<Set<string>>(new Set())
+
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -176,6 +184,11 @@ export default function ChatPage() {
 
     if (user) {
       initConversations()
+      fetchDocumentsApi()
+        .then((docs) => {
+          if (isMounted) setDocuments(docs)
+        })
+        .catch((e) => console.error("Failed to load documents:", e))
     } else if (!isAuthLoading) {
       setIsConversationsLoading(false)
     }
@@ -184,6 +197,7 @@ export default function ChatPage() {
       isMounted = false
     }
   }, [user, isAuthLoading])
+
 
   // Auto-scroll to bottom on message change
   const scrollToBottom = () => {
@@ -207,6 +221,7 @@ export default function ChatPage() {
   const handleNewChat = () => {
     setActiveId("")
     setInput("")
+    setActiveDocument(null)
     setMobileSidebarOpen(false)
   }
 
@@ -436,7 +451,11 @@ export default function ChatPage() {
 
     try {
       await sendStreamingChatMessageApi(
-        { message: textToSend, thread_id: currentConvId },
+        {
+          message: textToSend,
+          thread_id: currentConvId,
+          document_id: activeDocument?.id,
+        },
         (event) => {
           const durationSeconds = ((Date.now() - startTime) / 1000).toFixed(1)
 
@@ -588,7 +607,12 @@ export default function ChatPage() {
           pinnedCount={pinnedItems.length}
           pinnedItems={pinnedItems}
           onSelectPinnedMessage={handleSelectPinnedMessage}
+          documentsCount={documents.length}
+          onOpenDocuments={() => setIsDocumentsOpen(true)}
+          activeDocument={activeDocument}
+          onClearActiveDocument={() => setActiveDocument(null)}
         />
+
 
         {/* Scrollable Messages Area Wrapper */}
         <div className="relative flex-1 min-h-0">
@@ -687,8 +711,16 @@ export default function ChatPage() {
               input={input}
               setInput={setInput}
               isLoading={isLoading}
-              onSubmit={() => handleSubmitMessage()}
+              onSubmit={(promptText) => handleSubmitMessage(promptText)}
               onStop={handleStopGeneration}
+              onOpenDocuments={() => setIsDocumentsOpen(true)}
+              documentCount={documents.length}
+              onDocumentAttached={(doc) => {
+                setDocuments((prev) => [doc, ...prev])
+                setActiveDocument(doc)
+              }}
+              activeDocument={activeDocument}
+              onClearActiveDocument={() => setActiveDocument(null)}
             />
           </div>
         </div>
@@ -700,6 +732,20 @@ export default function ChatPage() {
         onClose={() => setIsSettingsOpen(false)}
         onDeleteAllChats={handleDeleteAllConversations}
       />
+
+      {/* Document Knowledge Base / Agentic RAG Dialog */}
+      <DocumentsDialog
+        isOpen={isDocumentsOpen}
+        onClose={() => setIsDocumentsOpen(false)}
+        onDocumentUploaded={(doc) => {
+          setDocuments((prev) => [doc, ...prev])
+          setActiveDocument(doc)
+        }}
+        activeDocumentId={activeDocument?.id}
+        onSelectDocument={(doc) => setActiveDocument(doc)}
+        onUnselectDocument={() => setActiveDocument(null)}
+      />
     </div>
   )
 }
+

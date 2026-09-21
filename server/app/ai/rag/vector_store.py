@@ -138,6 +138,12 @@ class DocumentVectorStore:
         if not clean_query:
             return []
 
+        # If document_id not specified, check if user has exactly one document
+        if not document_id:
+            user_docs = await DocumentVectorStore.get_user_documents(db, user_id, limit=2)
+            if len(user_docs) == 1:
+                document_id = user_docs[0].id
+
         query_vector = await aget_embedding_vector(clean_query)
 
         # Calculate cosine distance
@@ -178,7 +184,64 @@ class DocumentVectorStore:
                     )
                 )
 
+        # Check for overview/summary/context meta-questions
+        overview_triggers = [
+            "summarize",
+            "summary",
+            "overview",
+            "context",
+            "content",
+            "what is this",
+            "about this",
+            "about the pdf",
+            "about the document",
+            "outline",
+            "tell me about",
+            "name",
+            "explain this",
+            "key points",
+        ]
+        q_lower = clean_query.lower()
+        is_overview_request = any(t in q_lower for t in overview_triggers)
+
+        # If overview request or if vector similarity produced no chunks, fetch introductory chunks
+        if is_overview_request or len(retrieved) == 0:
+            target_id = document_id
+            if not target_id:
+                latest_docs = await DocumentVectorStore.get_user_documents(db, user_id, limit=1)
+                if latest_docs:
+                    target_id = latest_docs[0].id
+
+            if target_id:
+                intro_stmt = (
+                    select(DocumentChunk, Document.filename)
+                    .join(Document, Document.id == DocumentChunk.document_id)
+                    .where(
+                        DocumentChunk.user_id == user_id,
+                        DocumentChunk.document_id == target_id,
+                    )
+                    .order_by(DocumentChunk.chunk_index)
+                    .limit(limit)
+                )
+                intro_res = await db.execute(intro_stmt)
+                intro_rows = intro_res.all()
+
+                for chunk, filename in intro_rows:
+                    if not any(r.content == chunk.content for r in retrieved):
+                        retrieved.append(
+                            RetrievedChunk(
+                                content=chunk.content,
+                                chunk_index=chunk.chunk_index,
+                                page_number=chunk.page_number,
+                                document_id=chunk.document_id,
+                                filename=filename or (chunk.extra_metadata or {}).get("filename", "Document"),
+                                similarity_score=0.88,
+                                metadata=chunk.extra_metadata or {},
+                            )
+                        )
+
         return retrieved
+
 
     @staticmethod
     async def get_user_documents(

@@ -1,11 +1,12 @@
 "use client"
 
 import React, { useState } from "react"
-import { Menu, Sparkles, ChevronDown, Plus, Share2, MoreVertical, Zap, Bot, Brain, Pin } from "lucide-react"
+import { Menu, Sparkles, ChevronDown, Plus, Share2, MoreVertical, Zap, Bot, Brain, Pin, FileText, X } from "lucide-react"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { PinItem } from "@/types/pin"
+import { UserDocument } from "@/types/document"
 
 interface ChatHeaderProps {
   onToggleMobileSidebar: () => void
@@ -15,6 +16,10 @@ interface ChatHeaderProps {
   pinnedCount?: number
   pinnedItems?: PinItem[]
   onSelectPinnedMessage?: (messageId: string) => void
+  documentsCount?: number
+  onOpenDocuments?: () => void
+  activeDocument?: UserDocument | null
+  onClearActiveDocument?: () => void
 }
 
 const MODELS = [
@@ -32,7 +37,12 @@ export function ChatHeader({
   pinnedCount = 0,
   pinnedItems = [],
   onSelectPinnedMessage,
+  documentsCount = 0,
+  onOpenDocuments,
+  activeDocument,
+  onClearActiveDocument,
 }: ChatHeaderProps) {
+
   const currentModel = MODELS.find((m) => m.id === selectedModel) || MODELS[0]
 
   return (
@@ -81,12 +91,54 @@ export function ChatHeader({
             })}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Active Scoped Document Pill in Header */}
+        {activeDocument && (
+          <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs animate-in fade-in">
+            <FileText className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+            <span className="truncate max-w-[150px] md:max-w-[200px] font-medium text-white">
+              {activeDocument.filename}
+            </span>
+            <span className="text-[10px] font-mono text-emerald-300 bg-emerald-500/20 px-1 py-0.5 rounded">
+              Doc Scoped
+            </span>
+            {onClearActiveDocument && (
+              <button
+                type="button"
+                onClick={onClearActiveDocument}
+                className="p-0.5 rounded text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                title="Exit document focus"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Header Actions */}
       <div className="flex items-center gap-2">
+        {/* Documents Knowledge Base Trigger */}
+        {onOpenDocuments && (
+          <button
+            type="button"
+            onClick={onOpenDocuments}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-teal-500/30 bg-teal-500/10 text-teal-300 hover:bg-teal-500/20 text-xs font-semibold cursor-pointer transition-all"
+            title="Manage Document Knowledge Base (Agentic RAG)"
+          >
+            <FileText className="h-3.5 w-3.5 text-teal-400" />
+            <span className="hidden sm:inline">Docs</span>
+            {documentsCount > 0 && (
+              <span className="text-[10px] bg-teal-400/20 px-1.5 rounded-full font-mono text-teal-300">
+                {documentsCount}
+              </span>
+            )}
+          </button>
+        )}
+
         {/* Pinned Messages Trigger */}
         {pinnedCount > 0 && (
+
           <DropdownMenu>
             <DropdownMenuTrigger>
               <div

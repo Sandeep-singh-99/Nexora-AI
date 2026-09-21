@@ -138,25 +138,32 @@ async def event_generator(
     message: str,
     thread_id: str,
     user_id: Optional[str] = None,
+    document_id: Optional[str] = None,
 ):
     """Streams thinking steps, search queries & results, guardrails status, and LLM response tokens.
     
     Monitors client connection state to stop execution immediately when the user clicks 'Stop'.
     """
+    configurable_dict = {
+        "thread_id": thread_id,
+        "user_id": user_id or "anonymous",
+    }
+    if document_id:
+        configurable_dict["document_id"] = document_id
+
     config = {
-        "configurable": {
-            "thread_id": thread_id,
-            "user_id": user_id or "anonymous",
-        },
+        "configurable": configurable_dict,
         "recursion_limit": 100,
         "run_name": "Nexora Chat Stream",
         "tags": ["nexora", "chat", "streaming"],
         "metadata": {
             "thread_id": thread_id,
             "user_id": user_id or "anonymous",
+            "document_id": document_id,
             "source": "api_chat_stream",
         },
     }
+
 
     input_data = {"messages": [HumanMessage(content=message)]}
 
@@ -386,7 +393,13 @@ async def chat_stream(
         user_id = str(current_user.id) if current_user else "anonymous"
 
         return StreamingResponse(
-            event_generator(request, request_data.message, thread_id, user_id=user_id),
+            event_generator(
+                request,
+                request_data.message,
+                thread_id,
+                user_id=user_id,
+                document_id=request_data.document_id,
+            ),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -418,21 +431,25 @@ async def chat(
 
         thread_id = request.thread_id or "default_session"
         user_id = str(current_user.id) if current_user else "anonymous"
+        configurable_dict = {
+            "thread_id": thread_id,
+            "user_id": user_id,
+        }
+        if request.document_id:
+            configurable_dict["document_id"] = request.document_id
+
         config = {
-            "configurable": {
-                "thread_id": thread_id,
-                "user_id": user_id,
-            },
+            "configurable": configurable_dict,
             "recursion_limit": 100,
             "run_name": "Nexora Chat Invoke",
             "tags": ["nexora", "chat", "invoke"],
             "metadata": {
                 "thread_id": thread_id,
                 "user_id": user_id,
+                "document_id": request.document_id,
                 "source": "api_chat_invoke",
             },
         }
-
 
         result = await ai_graph.ainvoke(
             {"messages": [HumanMessage(content=request.message)]},

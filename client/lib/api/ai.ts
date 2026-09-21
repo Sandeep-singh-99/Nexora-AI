@@ -4,6 +4,7 @@ import { GenerativeUIResponse } from "@/types/chat";
 export interface ChatRequest {
   message: string;
   thread_id?: string;
+  document_id?: string;
 }
 
 export interface ChatResponse {
@@ -57,12 +58,15 @@ export async function sendStreamingChatMessageApi(
   onEvent: (event: SSEEvent) => void,
   signal?: AbortSignal
 ): Promise<void> {
-  const response = await fetch("http://localhost:8000/api/v1/ai/chat/stream", {
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+  const response = await fetch(`${baseUrl}/ai/chat/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(payload),
     signal,
   });
+
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));

@@ -9,8 +9,9 @@ import { ChatMessage } from "@/types/chat"
 import { GenerativeUIRenderer } from "./generative-ui"
 import { AIThinking } from "./ai-thinking"
 import { MessageActions } from "./message-actions"
-import { Sparkles, Copy, Check, Terminal, Globe, ExternalLink, Pin } from "lucide-react"
+import { Sparkles, Copy, Check, Terminal, Globe, ExternalLink, Pin, FileText } from "lucide-react"
 import { SearchResultItem } from "@/types/chat"
+
 
 interface AssistantMessageProps {
   message: ChatMessage
@@ -72,7 +73,69 @@ function SourceCitations({ results }: { results: SearchResultItem[] }) {
   )
 }
 
+function DocumentCitations({ content }: { content: string }) {
+  if (!content) return null
+
+  // Match citations like [Document: report.pdf, Page 3] or [Source 1: spec.docx, Page 2] or [contract.pdf, Page 1]
+  const regex = /\[(?:(?:Source \d+|Document):\s*)?([^,\]\n]+?\.(?:pdf|docx))(?:,\s*Page\s*(\d+|N\/A))?\]/gi
+  const matches = Array.from(content.matchAll(regex))
+
+  if (matches.length === 0) return null
+
+  const seen = new Set<string>()
+  const citations: Array<{ filename: string; page?: string }> = []
+
+  for (const m of matches) {
+    const filename = m[1].trim()
+    const page = m[2]
+    const key = `${filename}-${page || ""}`
+    if (!seen.has(key)) {
+      seen.add(key)
+      citations.push({ filename, page })
+    }
+  }
+
+  return (
+    <div className="my-3 p-3 rounded-2xl bg-[#0D131D]/90 border border-teal-500/20 shadow-lg">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 mb-2 font-mono">
+        <FileText className="h-3.5 w-3.5 text-emerald-400" />
+        <span>Grounded Document Sources ({citations.length})</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {citations.map((c, idx) => {
+          const isPdf = c.filename.toLowerCase().endsWith(".pdf")
+          return (
+            <div
+              key={idx}
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-slate-300 shrink-0 hover:border-emerald-500/40 transition-colors"
+            >
+              <span
+                className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                  isPdf
+                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                    : "bg-teal-500/20 text-teal-300 border border-teal-500/30"
+                }`}
+              >
+                {isPdf ? "PDF" : "DOCX"}
+              </span>
+              <span className="truncate max-w-[200px] font-medium text-[11px] text-slate-200">
+                {c.filename}
+              </span>
+              {c.page && c.page !== "N/A" && (
+                <span className="text-[10px] text-slate-400 font-mono">
+                  p. {c.page}
+                </span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function preprocessLaTeX(content: string): string {
+
   if (!content) return ""
 
   // Convert literal escaped "\\n" to real newlines "\n" if present from database storage
@@ -182,6 +245,10 @@ export function AssistantMessage({ message, onRegenerate, isPinned, onTogglePin 
         {message.searchResults && message.searchResults.length > 0 && (
           <SourceCitations results={message.searchResults} />
         )}
+
+        {/* Grounded Document Sources Badges (Agentic RAG) */}
+        {message.content && <DocumentCitations content={message.content} />}
+
 
         {/* Message Content */}
         {message.content && (

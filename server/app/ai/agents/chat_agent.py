@@ -2,7 +2,7 @@ from langchain.agents import create_agent
 from app.ai.core.llm import get_llm
 from app.ai.tool.tavily import tavily_search
 from app.ai.tool.time import get_current_time
-from app.ai.tool.rag_tool import search_user_documents
+from app.ai.tool.rag_tool import search_user_documents, list_user_documents
 from app.ai.middleware.tool_error import (
     get_tool_error_middleware,
     get_tool_retry_middleware,
@@ -12,7 +12,7 @@ search_tool = tavily_search()
 
 chat_agent = create_agent(
     model=get_llm("groq"),
-    tools=[get_current_time, search_tool, search_user_documents],
+    tools=[get_current_time, search_tool, search_user_documents, list_user_documents],
     middleware=[
         get_tool_error_middleware(),
         get_tool_retry_middleware(
@@ -20,7 +20,7 @@ chat_agent = create_agent(
             backoff_factor=2.0,
             initial_delay=1.0,
             max_delay=60.0,
-            tools=[get_current_time.name, search_tool.name, search_user_documents.name],
+            tools=[get_current_time.name, search_tool.name, search_user_documents.name, list_user_documents.name],
         ),
     ],
     system_prompt=(
@@ -28,7 +28,7 @@ chat_agent = create_agent(
         "helpful, accurate, and user-focused responses.\n\n"
         "### CORE OBJECTIVE\n"
         "Assist users with general questions, reasoning, coding, "
-        "research, everyday conversations, and informational requests.\n\n"
+        "research, everyday conversations, informational requests, and document intelligence.\n\n"
         "### GUIDING PRINCIPLES\n"
         "1. **Accuracy**\n"
         "Provide accurate and clear answers. If you are uncertain, "
@@ -50,16 +50,13 @@ chat_agent = create_agent(
         "Format the final response as clean plain text in this structure:\n"
         "**[City], [Country] ([Timezone])**\n"
         "Current time: [Formatted Time & Date]\n\n"
-        "Example:\n"
-        "**Tokyo, Japan (Asia/Tokyo)**\n"
-        "Current time: Wednesday, September 16, 2026 at 04:46 PM JST\n\n"
-        "**New Delhi, India (Asia/Kolkata)**\n"
-        "Current time: Wednesday, September 16, 2026 at 01:17 PM IST\n\n"
         "6. **User Documents & Uploaded Files (Agentic RAG)**\n"
-        "When the user asks about their uploaded documents, files, PDFs, DOCX files, "
-        "reports, contracts, notes, or uploaded data, use the `search_user_documents` tool.\n"
-        "The tool performs intelligent semantic search and retrieval evaluation across their documents.\n"
-        "DO NOT use `search_user_documents` for general knowledge or open-web questions.\n\n"
+        "Users can upload documents (PDFs and Word DOCX files) to their knowledge base.\n"
+        "- When the user asks about 'this pdf', 'this document', 'summarize this document', 'what is context of this pdf', 'what content in this pdf', or asks questions grounded in their files, you MUST use `search_user_documents`.\n"
+        "- When the user asks for the name, list, or title of their documents or uploaded files, use `list_user_documents`.\n"
+        "- DO NOT assume the user has not uploaded any file without checking. If the user refers to 'this document' or 'this PDF', call `search_user_documents` or `list_user_documents` to verify and retrieve the content.\n"
+        "- If a specific document is selected or scoped in the conversation, focus your answers strictly on that document.\n"
+        "- DO NOT use `search_user_documents` for general knowledge or open-web questions.\n\n"
         "7. **Conciseness**\n"
         "Give the direct answer first and avoid unnecessary filler."
     ),
