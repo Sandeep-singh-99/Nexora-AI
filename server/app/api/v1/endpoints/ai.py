@@ -144,7 +144,10 @@ async def event_generator(
     Monitors client connection state to stop execution immediately when the user clicks 'Stop'.
     """
     config = {
-        "configurable": {"thread_id": thread_id},
+        "configurable": {
+            "thread_id": thread_id,
+            "user_id": user_id or "anonymous",
+        },
         "recursion_limit": 100,
         "run_name": "Nexora Chat Stream",
         "tags": ["nexora", "chat", "streaming"],
@@ -154,6 +157,7 @@ async def event_generator(
             "source": "api_chat_stream",
         },
     }
+
     input_data = {"messages": [HumanMessage(content=message)]}
 
     active_search_query = ""
@@ -197,8 +201,27 @@ async def event_generator(
                     })
                     yield f"data: {payload}\n\n"
 
-            # 2. Web Search Tool Invocation (Google Search Grounding / Tavily)
-            elif kind == "on_tool_start" and any(k in name.lower() for k in ["search", "google", "tavily", "internet"]):
+            # 2a. Document Search (Agentic RAG) Tool Invocation
+            elif kind == "on_tool_start" and ("search_user_documents" in name.lower() or "document" in name.lower()):
+                raw_input = event.get("data", {}).get("input")
+                active_search_query = extract_search_query(raw_input)
+                payload = json.dumps({
+                    "type": "status",
+                    "agent": "Document Assistant",
+                    "label": f"Searching uploaded documents for '{active_search_query}'...",
+                })
+                yield f"data: {payload}\n\n"
+
+            elif kind == "on_tool_end" and ("search_user_documents" in name.lower() or "document" in name.lower()):
+                payload = json.dumps({
+                    "type": "status",
+                    "agent": "Document Assistant",
+                    "label": "Evaluated document context & synthesizing answer...",
+                })
+                yield f"data: {payload}\n\n"
+
+            # 2b. Web Search Tool Invocation (Google Search Grounding / Tavily)
+            elif kind == "on_tool_start" and ("search_user_documents" not in name.lower()) and any(k in name.lower() for k in ["search", "google", "tavily", "internet"]):
                 raw_input = event.get("data", {}).get("input")
                 active_search_query = extract_search_query(raw_input)
                 payload = json.dumps({
@@ -208,7 +231,7 @@ async def event_generator(
                 })
                 yield f"data: {payload}\n\n"
 
-            elif kind == "on_tool_end" and any(k in name.lower() for k in ["search", "google", "tavily", "internet"]):
+            elif kind == "on_tool_end" and ("search_user_documents" not in name.lower()) and any(k in name.lower() for k in ["search", "google", "tavily", "internet"]):
                 raw_output = event.get("data", {}).get("output")
                 parsed_results = extract_tavily_results(raw_output)
                 payload = json.dumps({
@@ -218,6 +241,7 @@ async def event_generator(
                     "results": parsed_results,
                 })
                 yield f"data: {payload}\n\n"
+
 
             # 2b. Time Tool Invocation End (Generative UI payload stream)
             elif kind == "on_tool_end" and ("time" in name.lower() or "get_current_time" in name.lower()):
@@ -395,7 +419,10 @@ async def chat(
         thread_id = request.thread_id or "default_session"
         user_id = str(current_user.id) if current_user else "anonymous"
         config = {
-            "configurable": {"thread_id": thread_id},
+            "configurable": {
+                "thread_id": thread_id,
+                "user_id": user_id,
+            },
             "recursion_limit": 100,
             "run_name": "Nexora Chat Invoke",
             "tags": ["nexora", "chat", "invoke"],
@@ -405,6 +432,7 @@ async def chat(
                 "source": "api_chat_invoke",
             },
         }
+
 
         result = await ai_graph.ainvoke(
             {"messages": [HumanMessage(content=request.message)]},
