@@ -34,3 +34,60 @@ async def test_search_user_documents_success():
             user_id="123e4567-e89b-12d3-a456-426614174000",
             document_id=None,
         )
+
+
+@pytest.mark.asyncio
+async def test_search_user_documents_scoped_enforcement():
+    """Verify configurable document_id is strictly passed to run_agentic_rag."""
+    mock_rag_response = {
+        "query": "Summarize this document",
+        "answer": "This is Sandeep's profile summary.",
+        "sources": [{"filename": "Sandeep.pdf", "page_number": 1}],
+        "is_grounded": True,
+    }
+
+    with patch("app.ai.tool.rag_tool.run_agentic_rag", new=AsyncMock(return_value=mock_rag_response)) as mock_rag:
+        result = await search_user_documents.ainvoke({
+            "query": "Summarize this document",
+        }, config={
+            "configurable": {
+                "user_id": "123e4567-e89b-12d3-a456-426614174000",
+                "document_id": "sandeep-doc-id-123",
+            }
+        })
+
+        assert "Sandeep's profile summary" in result
+        mock_rag.assert_called_once_with(
+            query="Summarize this document",
+            user_id="123e4567-e89b-12d3-a456-426614174000",
+            document_id="sandeep-doc-id-123",
+        )
+
+
+@pytest.mark.asyncio
+async def test_search_user_documents_config_overrides_tool_arg():
+    """Verify config document_id overrides any hallucinated tool arg."""
+    mock_rag_response = {
+        "query": "Summarize this document",
+        "answer": "Accurate scoped summary.",
+        "sources": [{"filename": "Sandeep.pdf", "page_number": 1}],
+        "is_grounded": True,
+    }
+
+    with patch("app.ai.tool.rag_tool.run_agentic_rag", new=AsyncMock(return_value=mock_rag_response)) as mock_rag:
+        result = await search_user_documents.ainvoke({
+            "query": "Summarize this document",
+            "document_id": "hallucinated-old-doc-id",
+        }, config={
+            "configurable": {
+                "user_id": "123e4567-e89b-12d3-a456-426614174000",
+                "document_id": "user-locked-doc-id",
+            }
+        })
+
+        assert "Accurate scoped summary" in result
+        mock_rag.assert_called_once_with(
+            query="Summarize this document",
+            user_id="123e4567-e89b-12d3-a456-426614174000",
+            document_id="user-locked-doc-id",
+        )

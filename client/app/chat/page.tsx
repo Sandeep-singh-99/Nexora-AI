@@ -742,7 +742,12 @@ export default function ChatPage() {
           setActiveDocument(doc)
         }}
         activeDocumentId={activeDocument?.id}
-        onSelectDocument={(doc) => setActiveDocument(doc)}
+        onSelectDocument={(doc) => {
+          setActiveDocument(doc)
+          if (activeId && (messagesMap[activeId] || []).length > 0) {
+            setActiveId("")
+          }
+        }}
         onUnselectDocument={() => setActiveDocument(null)}
       />
     </div>

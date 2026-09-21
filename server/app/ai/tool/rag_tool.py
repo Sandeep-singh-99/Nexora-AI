@@ -61,13 +61,16 @@ async def search_user_documents(
     DO NOT use this tool for general knowledge questions or questions not related to user-uploaded files.
     """
     user_id = None
-    target_doc_id = document_id
+    target_doc_id = None
     if config:
         configurable = config.get("configurable", {})
         metadata = config.get("metadata", {})
         user_id = configurable.get("user_id") or metadata.get("user_id")
-        if not target_doc_id:
-            target_doc_id = configurable.get("document_id") or metadata.get("document_id")
+        target_doc_id = configurable.get("document_id") or metadata.get("document_id")
+
+    # If no document was explicitly locked in config, fall back to tool argument
+    if not target_doc_id:
+        target_doc_id = document_id
 
     if not user_id or user_id == "anonymous":
         return (

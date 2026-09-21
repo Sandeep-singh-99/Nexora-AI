@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from langchain_core.messages import HumanMessage
-from app.core.database import get_db
+from app.core.database import get_db, AsyncSessionLocal
 from app.dependencies.auth import get_optional_current_user
 from app.models.auth import User
 from app.models.chat_memory import Conversation
@@ -18,9 +18,36 @@ from app.schemas.ai import ChatRequest, ChatResponse, DeleteConversationResponse
 from app.services.chat_service import ChatService
 from app.ai.graph import ai_graph, clear_thread_memory, memory
 from app.ai.guardrails.input_filter import validate_input, AbuseFilterError
+from app.ai.rag.vector_store import DocumentVectorStore
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="", tags=["AI"])
+
+
+async def build_scoped_message(message: str, user_id: Optional[str], document_id: Optional[str]) -> str:
+    """If a document is scoped, fetches its record and builds an unambiguous prompt instruction."""
+    if not document_id or not user_id or user_id == "anonymous":
+        return message
+
+    try:
+        user_uuid = UUID(str(user_id))
+        doc_uuid = UUID(str(document_id))
+        async with AsyncSessionLocal() as session:
+            doc_record = await DocumentVectorStore.get_document_by_id(session, user_uuid, doc_uuid)
+            if doc_record:
+                return (
+                    f"[Active Document Scope: \"{doc_record.filename}\" (ID: {doc_record.id})]\n"
+                    f"[CRITICAL MANDATE: The user has explicitly selected and locked the chat to the document \"{doc_record.filename}\". "
+                    f"All questions about 'this document', 'this pdf', summaries, key points, or content "
+                    f"STRICTLY and EXCLUSIVELY pertain to \"{doc_record.filename}\". "
+                    f"Always invoke search_user_documents with document_id=\"{doc_record.id}\". "
+                    f"Do NOT use, summarize, or mention any previously discussed documents from earlier in the conversation.]\n\n"
+                    f"{message}"
+                )
+    except Exception as e:
+        logger.warning("Could not build scoped document prompt: %s", e)
+
+    return message
 
 
 def extract_search_query(tool_input) -> str:
@@ -165,7 +192,8 @@ async def event_generator(
     }
 
 
-    input_data = {"messages": [HumanMessage(content=message)]}
+    effective_message = await build_scoped_message(message, user_id, document_id)
+    input_data = {"messages": [HumanMessage(content=effective_message)]}
 
     active_search_query = ""
     active_node = ""
@@ -451,8 +479,9 @@ async def chat(
             },
         }
 
+        effective_message = await build_scoped_message(request.message, user_id, request.document_id)
         result = await ai_graph.ainvoke(
-            {"messages": [HumanMessage(content=request.message)]},
+            {"messages": [HumanMessage(content=effective_message)]},
             config=config,
         )
 

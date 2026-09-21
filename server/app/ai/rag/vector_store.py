@@ -213,6 +213,7 @@ class DocumentVectorStore:
                     target_id = latest_docs[0].id
 
             if target_id:
+                intro_limit = max(limit, 8) if is_overview_request else limit
                 intro_stmt = (
                     select(DocumentChunk, Document.filename)
                     .join(Document, Document.id == DocumentChunk.document_id)
@@ -221,7 +222,7 @@ class DocumentVectorStore:
                         DocumentChunk.document_id == target_id,
                     )
                     .order_by(DocumentChunk.chunk_index)
-                    .limit(limit)
+                    .limit(intro_limit)
                 )
                 intro_res = await db.execute(intro_stmt)
                 intro_rows = intro_res.all()
@@ -239,6 +240,10 @@ class DocumentVectorStore:
                                 metadata=chunk.extra_metadata or {},
                             )
                         )
+
+        # Guarantee strict scoping: if document_id was requested, NEVER return chunks from other documents
+        if document_id:
+            retrieved = [c for c in retrieved if str(c.document_id) == str(document_id)]
 
         return retrieved
 
