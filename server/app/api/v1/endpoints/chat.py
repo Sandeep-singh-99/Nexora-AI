@@ -13,8 +13,11 @@ from app.schemas.chat import (
     ConversationListResponse,
     MessageResponse,
     ChatMessageRequest,
+    TitleGenerateRequest,
+    TitleGenerateResponse,
 )
 from app.services.chat_service import ChatService
+from app.ai.title_generator import generate_chatgpt_title
 
 router = APIRouter(prefix="", tags=["Chat Storage"])
 
@@ -25,13 +28,57 @@ async def create_conversation(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new chat conversation session."""
+    """Create a new chat conversation session with ChatGPT-style title generation."""
+    title = payload.title
+    if payload.message:
+        title = await generate_chatgpt_title(
+            message=payload.message,
+            document_name=payload.document_name,
+        )
+    elif not title or title == "New Chat":
+        title = "New Chat"
+
     conversation = await ChatService.create_conversation(
         db=db,
         user_id=current_user.id,
-        title=payload.title or "New Chat",
+        title=title,
     )
     return conversation
+
+
+@router.post("/conversations/{conversation_id}/generate-title", response_model=ConversationResponse)
+async def generate_and_update_conversation_title(
+    conversation_id: UUID,
+    payload: TitleGenerateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Generate a ChatGPT-style title using AI and update the stored conversation."""
+    title = await generate_chatgpt_title(
+        message=payload.message,
+        document_name=payload.document_name,
+        assistant_response=payload.assistant_response,
+    )
+    conversation = await ChatService.update_conversation(
+        db=db,
+        conversation_id=conversation_id,
+        user_id=current_user.id,
+        title=title,
+    )
+    return conversation
+
+
+@router.post("/generate-title", response_model=TitleGenerateResponse)
+async def generate_title_preview(
+    payload: TitleGenerateRequest,
+):
+    """Generate a ChatGPT-style title preview."""
+    title = await generate_chatgpt_title(
+        message=payload.message,
+        document_name=payload.document_name,
+        assistant_response=payload.assistant_response,
+    )
+    return TitleGenerateResponse(title=title)
 
 
 @router.get("/conversations", response_model=ConversationListResponse)

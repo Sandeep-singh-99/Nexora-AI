@@ -20,6 +20,7 @@ import { sendStreamingChatMessageApi } from "@/lib/api/ai"
 import {
   fetchConversationsApi,
   createConversationApi,
+  generateConversationTitleApi,
   fetchConversationMessagesApi,
   deleteConversationApi,
   updateConversationApi,
@@ -396,8 +397,11 @@ export default function ChatPage() {
     // If draft mode (no active conversation), create conversation in DB now
     if (!currentConvId) {
       try {
-        const titleSnippet = textToSend.slice(0, 30) + (textToSend.length > 30 ? "..." : "")
-        const created = await createConversationApi(titleSnippet)
+        const created = await createConversationApi(
+          undefined,
+          textToSend,
+          activeDocument?.filename
+        )
         const session = mapApiToSession(created)
         setConversations((prev) => [session, ...prev])
         setActiveId(session.id)
@@ -537,6 +541,22 @@ export default function ChatPage() {
         await addMessageApi(currentConvId, finalAssistantText, "assistant").catch((err) =>
           console.error("Failed to persist assistant message:", err)
         )
+
+        // Refine ChatGPT-style title asynchronously
+        generateConversationTitleApi(
+          currentConvId,
+          textToSend,
+          activeDocument?.filename,
+          finalAssistantText
+        )
+          .then((updatedConv) => {
+            if (updatedConv && updatedConv.title) {
+              setConversations((prev) =>
+                prev.map((c) => (c.id === currentConvId ? { ...c, title: updatedConv.title } : c))
+              )
+            }
+          })
+          .catch((e) => console.error("Failed to refine conversation title:", e))
       }
 
       // Re-sync conversation list from backend so titles & timestamps update

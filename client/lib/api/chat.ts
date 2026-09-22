@@ -8,8 +8,33 @@ export async function fetchConversationsApi(limit = 50, offset = 0): Promise<Api
   return response.data.conversations;
 }
 
-export async function createConversationApi(title = "New Chat"): Promise<ApiConversation> {
-  const response = await api.post<ApiConversation>("/chat/conversations", { title });
+export async function createConversationApi(
+  title?: string,
+  message?: string,
+  documentName?: string
+): Promise<ApiConversation> {
+  const response = await api.post<ApiConversation>("/chat/conversations", {
+    title: title || "New Chat",
+    message,
+    document_name: documentName,
+  });
+  return response.data;
+}
+
+export async function generateConversationTitleApi(
+  conversationId: string,
+  message: string,
+  documentName?: string,
+  assistantResponse?: string
+): Promise<ApiConversation> {
+  const response = await api.post<ApiConversation>(
+    `/chat/conversations/${conversationId}/generate-title`,
+    {
+      message,
+      document_name: documentName,
+      assistant_response: assistantResponse,
+    }
+  );
   return response.data;
 }
 

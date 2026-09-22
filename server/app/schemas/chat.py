@@ -18,6 +18,19 @@ class MessageResponse(BaseModel):
 
 class ConversationCreate(BaseModel):
     title: Optional[str] = "New Chat"
+    message: Optional[str] = None
+    document_name: Optional[str] = None
+
+
+class TitleGenerateRequest(BaseModel):
+    message: str = Field(..., min_length=1, description="User message or prompt")
+    document_name: Optional[str] = None
+    assistant_response: Optional[str] = None
+
+
+class TitleGenerateResponse(BaseModel):
+    title: str
+    conversation_id: Optional[UUID] = None
 
 
 class ConversationUpdate(BaseModel):

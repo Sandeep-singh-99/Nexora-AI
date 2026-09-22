@@ -56,4 +56,4 @@ Dockerfile
 *.sqlite
 *.sqlite3
 
-tests/
+tests
