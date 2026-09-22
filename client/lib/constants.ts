@@ -7,6 +7,12 @@ import {
   LayoutDashboard,
   Globe,
   Users,
+  Tv,
+  FileText,
+  Calculator,
+  ShieldCheck,
+  Database,
+  Sparkles,
 } from "lucide-react";
 
 export interface NavItem {
@@ -28,72 +34,110 @@ export interface FeatureItem {
   title: string;
   description: string;
   badge?: string;
+  category: "all" | "rag" | "agents" | "ui" | "security";
+  tags: string[];
+  highlight?: boolean;
 }
+
+export const FEATURE_CATEGORIES = [
+  { id: "all", label: "All Capabilities" },
+  { id: "rag", label: "Agentic RAG & Video" },
+  { id: "agents", label: "Multi-Agent System" },
+  { id: "ui", label: "Generative UI" },
+  { id: "security", label: "Safety & Privacy" },
+] as const;
 
 export const FEATURES: FeatureItem[] = [
   {
-    id: "ai-chat",
-    iconName: "MessageSquare",
-    icon: MessageSquare,
-    title: "AI Chat",
+    id: "youtube-rag",
+    iconName: "Tv",
+    icon: Tv,
+    title: "Interactive YouTube Video RAG",
     description:
-      "Have natural conversations with intelligent AI that understands your context and helps you turn ideas into useful answers.",
+      "Type /youtube <URL> to transcribe any YouTube video in seconds. Indexed into pgvector with clickable timestamps so you can jump straight to relevant moments in playback.",
+    badge: "New Feature",
+    category: "rag",
+    tags: ["/youtube Command", "Auto-Transcribe", "Click-to-Seek"],
+    highlight: true,
   },
   {
-    id: "knowledge",
-    iconName: "Brain",
-    icon: Brain,
-    title: "Your Knowledge",
+    id: "document-rag",
+    iconName: "FileText",
+    icon: FileText,
+    title: "Private In-Memory Document RAG",
     description:
-      "Upload documents and build a private knowledge base that your AI can search and understand.",
+      "Upload PDF and Word (.docx) files with zero permanent storage. Documents are parsed in-memory, chunked, and stored in pgvector (768-dim embeddings) for grounded retrieval.",
+    badge: "Zero Disk Storage",
+    category: "rag",
+    tags: ["pgvector 768-dim", "HNSW Cosine", "Grounded Citations"],
+    highlight: true,
   },
   {
-    id: "deep-research",
-    iconName: "Search",
-    icon: Search,
-    title: "Deep Research",
-    description:
-      "Break complex questions into research steps, gather evidence, and synthesize findings with citations.",
-  },
-  {
-    id: "ai-agents",
+    id: "multi-agent",
     iconName: "Bot",
     icon: Bot,
-    title: "AI Agents",
+    title: "LangGraph Multi-Agent Architecture",
     description:
-      "Let specialized agents reason through tasks, use tools, and complete multi-step workflows.",
-  },
-  {
-    id: "mcp-tools",
-    iconName: "Plug",
-    icon: Plug,
-    title: "MCP Integrations",
-    description:
-      "Connect AI agents to external tools, databases, repositories, and services through MCP.",
-  },
-  {
-    id: "generative-ui",
-    iconName: "LayoutDashboard",
-    icon: LayoutDashboard,
-    title: "Generative UI",
-    description:
-      "Turn AI responses into useful tables, charts, cards, sources, forms, and interactive experiences.",
+      "An intelligent stateful graph orchestrator that evaluates intent and routes dynamically to specialized Chat, Coding, Math, and Research agents with memory checkpointers.",
+    badge: "LangGraph 1.2",
+    category: "agents",
+    tags: ["Dynamic Router", "Coding Agent", "Math Agent", "Checkpointer"],
+    highlight: true,
   },
   {
     id: "web-research",
     iconName: "Globe",
     icon: Globe,
-    title: "Web Research",
+    title: "Live Web Grounding (Tavily)",
     description:
-      "Search the web, analyze relevant sources, and bring fresh information into your AI workflows.",
+      "Integrated web search brings fresh information, recent events, and documentation directly into conversations with Perplexity-style favicon-backed domain sources.",
+    badge: "Real-time Search",
+    category: "agents",
+    tags: ["Tavily Engine", "Live Web", "Source Attribution"],
   },
   {
-    id: "team-knowledge",
-    iconName: "Users",
-    icon: Users,
-    title: "Team Knowledge",
+    id: "generative-ui",
+    iconName: "LayoutDashboard",
+    icon: LayoutDashboard,
+    title: "Dynamic Generative UI",
     description:
-      "Give teams a shared intelligent workspace while keeping knowledge organized and accessible.",
+      "Responses stream beyond static text into interactive UI cards: interactive charts, sortable data tables, math cards with KaTeX display, time widgets, and video players.",
+    badge: "Generative UI",
+    category: "ui",
+    tags: ["Interactive Charts", "Data Tables", "KaTeX Math", "Video Player"],
+  },
+  {
+    id: "math-engine",
+    iconName: "Calculator",
+    icon: Calculator,
+    title: "Symbolic Mathematics Engine",
+    description:
+      "Powered by SymPy and SciPy to solve complex calculus, linear algebra, and algebraic systems with verified step-by-step reasoning and formatted LaTeX rendering.",
+    badge: "SymPy + SciPy",
+    category: "agents",
+    tags: ["Exact Calculus", "Algebra Solver", "LaTeX Display"],
+  },
+  {
+    id: "safety-guardrails",
+    iconName: "ShieldCheck",
+    icon: ShieldCheck,
+    title: "Dual-Layer Safety & PII Guardrails",
+    description:
+      "Real-time input and output abuse filters prevent prompt injections, while automated PII scanning with Human-in-the-Loop dialogs safeguards your confidential data.",
+    badge: "Enterprise Grade",
+    category: "security",
+    tags: ["Abuse Filter", "PII Scanning", "HITL Confirmation"],
+  },
+  {
+    id: "memory-sessions",
+    iconName: "Database",
+    icon: Database,
+    title: "Thread Memory & Scoped Focus",
+    description:
+      "Persistent multi-conversation history with automated ChatGPT-style title generation, message pinning, draft states, and strict document focus scoping.",
+    badge: "Stateful Chat",
+    category: "ui",
+    tags: ["Auto-Titles", "Message Pinning", "Document Scoping"],
   },
 ];
 
