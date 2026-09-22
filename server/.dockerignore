@@ -1,15 +1,15 @@
 # Python cache
-__pycache__
+__pycache__/
 *.py[cod]
 *.pyo
 
 # Virtual environment
-.venv
-venv
-env
+.venv/
+venv/
+env/
 
 # Git
-.git
+.git/
 .gitignore
 
 # Environment / secrets
@@ -18,42 +18,39 @@ env
 !.env.example
 
 # Testing
-.pytest_cache
+.pytest_cache/
 .coverage
 .coverage.*
-htmlcov
+htmlcov/
+tests/
 
 # Type checking / linting
-.mypy_cache
-.pyright
-.ruff_cache
+.mypy_cache/
+.pyright/
+.ruff_cache/
 
 # Build / packaging
-build
-dist
-*.egg-info
+build/
+dist/
+*.egg-info/
 
 # Logs
 *.log
 
 # IDE
-.vscode
-.idea
+.vscode/
+.idea/
 
 # OS
 .DS_Store
 Thumbs.db
 
 # Jupyter
-.ipynb_checkpoints
-
-# Docker
-Dockerfile
-.dockerignore
+.ipynb_checkpoints/
 
 # Local databases
 *.db
 *.sqlite
 *.sqlite3
 
-tests
+tests/
