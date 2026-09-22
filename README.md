@@ -2,7 +2,17 @@
 
 > **Enterprise-Grade Autonomous Multi-Agent AI Platform & Cognitive Assistant**
 
-Nexora is a modern, high-performance artificial intelligence platform powered by **LangGraph**, **FastAPI**, **Next.js 16**, and **pgvector**. It features multi-agent intent routing, real-time Server-Sent Events (SSE) streaming, multimodal Agentic RAG (PDF, DOCX, and OCR for images), hybrid symbolic mathematics, strict dual-stage guardrails, dynamic Generative UI, and deep observability through LangSmith.
+[![Next.js](https://img.shields.io/badge/Next.js-16.3.4-black?style=flat&logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19.2.8-blue?style=flat&logo=react)](https://react.dev/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.141.1-009688?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-1.2.11-FF6F00?style=flat&logo=langchain)](https://github.com/langchain-ai/langgraph)
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat&logo=python)](https://www.python.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-336791?style=flat&logo=postgresql)](https://github.com/pgvector/pgvector)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=flat&logo=tailwind-css)](https://tailwindcss.com/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker)](https://www.docker.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Nexora is an enterprise-grade artificial intelligence platform powered by **LangGraph**, **FastAPI**, **Next.js 16**, and **PostgreSQL with pgvector**. It unites autonomous multi-agent intent routing, real-time Server-Sent Events (SSE) streaming, zero-disk in-memory Document RAG, interactive YouTube Video RAG with click-to-seek playback, hybrid symbolic mathematics with SymPy, dual-stage security guardrails, ChatGPT-style automatic conversation titling, pinned messages, dynamic Generative UI, and end-to-end observability via LangSmith.
 
 ---
 
@@ -10,17 +20,22 @@ Nexora is a modern, high-performance artificial intelligence platform powered by
 
 - [Architectural Overview](#-architectural-overview)
 - [Multi-Agent LangGraph Workflow](#-multi-agent-langgraph-workflow)
-- [Agentic RAG & Document Pipeline](#-agentic-rag--document-pipeline)
+- [Agentic RAG & Knowledge Ingestion Pipelines](#-agentic-rag--knowledge-ingestion-pipelines)
+  - [1. Private In-Memory Document RAG (Zero Disk Storage)](#1-private-in-memory-document-rag-zero-disk-storage)
+  - [2. Interactive YouTube Video RAG with Click-to-Seek](#2-interactive-youtube-video-rag-with-click-to-seek)
 - [Security Middleware & Guardrails Architecture](#-security-middleware--guardrails-architecture)
 - [Key Features](#-key-features)
+- [Dynamic Generative UI Registry](#-dynamic-generative-ui-registry)
 - [Technology Stack](#-technology-stack)
 - [Repository Structure](#-repository-structure)
 - [Getting Started](#-getting-started)
   - [Prerequisites](#prerequisites)
   - [Environment Configuration](#environment-configuration)
-  - [Running with Docker Compose](#running-with-docker-compose-recommended)
+  - [Running with Docker Compose (Recommended)](#running-with-docker-compose-recommended)
   - [Manual Local Setup](#manual-local-setup)
 - [API Reference & Streaming Protocol](#-api-reference--streaming-protocol)
+  - [REST Endpoints](#rest-endpoints)
+  - [SSE Streaming Events Protocol](#sse-streaming-events-protocol)
 - [Testing](#-testing)
 - [License](#-license)
 
@@ -28,48 +43,51 @@ Nexora is a modern, high-performance artificial intelligence platform powered by
 
 ## 🏛️ Architectural Overview
 
-Nexora is organized as a unified monorepo decoupling a reactive Next.js 16 frontend from an asynchronous FastAPI backend and a stateful LangGraph execution engine.
+Nexora is built as a unified, high-throughput monorepo decoupling an ultra-responsive **Next.js 16** frontend (with Tailwind CSS v4 and Motion) from an asynchronous **FastAPI** backend and a stateful **LangGraph** orchestration graph.
 
 ```mermaid
 flowchart TD
     subgraph Client ["Client Application (Next.js 16 / React 19)"]
         UI["Modern Web Interface\nTailwind CSS v4 & Motion"]
-        GenUI["Dynamic Generative UI\nCards, Tables, Charts & Math"]
+        GenUI["Dynamic Generative UI\nYouTube Player, Math, Clocks, Charts & Tables"]
         ChatHook["SSE Streaming Engine\nAbort & Disconnect Control"]
     end
 
     subgraph Gateway ["API & Application Gateway"]
         FastAPI["FastAPI Asynchronous Gateway\nUvicorn / Python 3.11"]
         AuthMid["Security & Auth Middleware\nArgon2id & HTTP-only JWT"]
+        CSRFMid["Double-Submit Cookie CSRF\nx-csrf-token validation"]
     end
 
     subgraph AI_Engine ["LangGraph Multi-Agent Engine"]
-        InGuard["Dual-Stage Input Guardrail\nAbuse, Injection & PII Filter"]
+        InGuard["Dual-Stage Input Guardrail\nLength, Abuse, Injection & PII Filter"]
         Router["Intent Classifier & Router\nStructured Output Classifier"]
         ChatAgent["General Assistant\nWeb Search & Temporal Tools"]
         CodingAgent["Software Engineering Specialist\nArchitecture & Code Generation"]
         MathAgent["Hybrid Math Engine\nSymPy, SciPy & LaTeX"]
-        OutGuard["Output Sanitization Guardrail\nCompliance & Policy Validation"]
+        OutGuard["Output Sanitization Guardrail\nSecret Masking & Leak Prevention"]
     end
 
     subgraph Data_RAG ["Data & Knowledge Layer"]
         Postgres[("PostgreSQL Database\nSQLAlchemy 2.0 Async")]
-        PGVector[("pgvector Extension\nSemantic Vector Store")]
-        DocIngest["Multimodal Parser\nPDF, DOCX, Tesseract OCR"]
-        MemorySaver["LangGraph Checkpointer\nState Persistence"]
+        PGVector[("pgvector Extension\n768-dim Semantic Vector Store")]
+        DocIngest["In-Memory Document Parser\nPDF, DOCX, Scanned OCR Fallback"]
+        YTIngest["YouTube Video Ingester\nyoutube-transcript-api & oEmbed"]
+        MemorySaver["LangGraph Checkpointer\nThread State Persistence"]
     end
 
     subgraph External_Services ["External Services & Observability"]
         Groq["Groq Llama-3 Fast Inference"]
         Gemini["Google Gemini GenAI"]
         Tavily["Tavily Web Search API"]
-        HF["HuggingFace Embeddings"]
-        LangSmith["LangSmith Tracing & Observability"]
+        HF["HuggingFace Embeddings\nsentence-transformers"]
+        LangSmith["LangSmith Tracing & Telemetry"]
     end
 
     UI --> ChatHook
     ChatHook <-->|HTTP / SSE Stream| FastAPI
-    FastAPI --> AuthMid
+    FastAPI --> CSRFMid
+    CSRFMid --> AuthMid
     AuthMid --> InGuard
     InGuard --> Router
     Router --> ChatAgent
@@ -88,6 +106,7 @@ flowchart TD
     
     ChatAgent <--> PGVector
     DocIngest --> HF --> PGVector
+    YTIngest --> HF --> PGVector
     FastAPI <--> Postgres
     GenUI <--> UI
 ```
@@ -96,50 +115,52 @@ flowchart TD
 
 ## 🤖 Multi-Agent LangGraph Workflow
 
-User queries are ingested through an asynchronous state machine built with **LangGraph**. Requests pass through automated safety validation before being dynamically dispatched to specialized autonomous agents based on structured classification.
+User queries enter an asynchronous state machine managed by **LangGraph**. Requests pass through automated safety validation before dynamic dispatching to specialized agents based on structured classification:
 
 ```mermaid
 stateDiagram-v2
     [*] --> InputGuardrail: User Query Received
 
     state InputGuardrail {
-        [*] --> CheckPolicy: Evaluate Prompt & Abuse
-        CheckPolicy --> Flagged: Policy Violation / Malicious
+        [*] --> CheckPolicy: Evaluate Prompt Length, Injection & Abuse
+        CheckPolicy --> Flagged: Policy Violation / Malicious Input
         CheckPolicy --> Approved: Safe & Valid Input
     }
 
     InputGuardrail --> BlockedResponse: Flagged
-    BlockedResponse --> [*]: Safety Notice Returned
+    BlockedResponse --> [*]: Direct Safety Notice (0 LLM Tokens Spent)
 
     InputGuardrail --> IntentRouter: Approved
 
     state IntentRouter {
         [*] --> ClassifyIntent: LLM Structured Output
-        ClassifyIntent --> ChatRoute: General / Search / Documents / Time
+        ClassifyIntent --> ChatRoute: General / Search / Documents / YouTube / Time
         ClassifyIntent --> CodingRoute: Development / Refactor / Debugging
         ClassifyIntent --> MathRoute: Equations / Calculus / Linear Algebra
     }
 
     state "General Chat Agent" as ChatAgentNode {
         [*] --> CheckTools
-        CheckTools --> TavilySearch: Need Recent Web Facts?
-        CheckTools --> TimeTool: Current Time / Timezone?
+        CheckTools --> TavilySearch: Need Live Web Facts?
+        CheckTools --> TimeTool: Current Time / Timezone Request?
         CheckTools --> DocRAGTool: Document Scoped Query?
+        CheckTools --> YouTubeRAGTool: YouTube Video Scoped Query?
         CheckTools --> DirectChat: Conversational / Reasoning
         TavilySearch --> SynthesizeChat
         TimeTool --> SynthesizeChat
         DocRAGTool --> SynthesizeChat
+        YouTubeRAGTool --> SynthesizeChat
         DirectChat --> SynthesizeChat
     }
 
     state "Coding Agent" as CodingAgentNode {
-        [*] --> CodeSynthesis: Modular, Performant Implementation
+        [*] --> CodeSynthesis: Modular, Type-Safe, Performant Implementation
     }
 
     state "Math Agent" as MathAgentNode {
         [*] --> SympyEngine: Parse Symbolic Expression
         SympyEngine --> ExactCompute: SymPy / SciPy / NumPy
-        ExactCompute --> FormatLaTeX: Step-by-Step & LaTeX Output
+        ExactCompute --> FormatLaTeX: Step-by-Step & KaTeX Output
     }
 
     IntentRouter --> ChatAgentNode: ChatRoute
@@ -151,64 +172,84 @@ stateDiagram-v2
     MathAgentNode --> OutputGuardrail
 
     state OutputGuardrail {
-        [*] --> ValidateOutput: Content Sanitization
+        [*] --> ValidateOutput: Mask Secrets & Prevent Prompt Disclosure
         ValidateOutput --> Ready
     }
 
-    OutputGuardrail --> StreamToClient: Push SSE Event
+    OutputGuardrail --> StreamToClient: Push SSE Event (Tokens & Generative UI)
     StreamToClient --> [*]: Stream Completed
 ```
 
 ---
 
-## 📄 Agentic RAG & Document Pipeline
+## 📄 Agentic RAG & Knowledge Ingestion Pipelines
 
-Nexora features a fully isolated, multimodal Retrieval-Augmented Generation (RAG) system with support for scoped document conversations.
+Nexora features a zero-disk, multimodal Knowledge Ingestion and Retrieval-Augmented Generation (RAG) architecture supporting both uploaded documents and interactive YouTube videos.
 
 ```mermaid
 flowchart LR
-    subgraph Ingestion ["1. Document Ingestion"]
-        A1["PDF Upload\n(pypdf)"]
-        A2["Word Upload\n(python-docx)"]
-        A3["Images & Scans\n(OCR via Tesseract & Pillow)"]
+    subgraph Ingestion ["1. Knowledge Ingestion Sources"]
+        A1["PDF Upload\n(pypdf in-memory)"]
+        A2["Word Document\n(python-docx in-memory)"]
+        A3["Scanned PDFs\n(Tesseract OCR Fallback)"]
+        A4["YouTube Videos\n(/youtube <url> or dialog)"]
     end
 
     subgraph Processing ["2. Extraction & Chunking"]
-        B1["Text Normalization\n& Metadata Tagging"]
-        B2["Recursive Character\nSemantic Chunking"]
+        B1["Text Normalization\n& Sensitive Data Scanning"]
+        B2["Document Chunker\nRecursive Semantic Splits"]
+        B3["YouTube Transcript Chunker\nGrouped Timestamp Windows"]
     end
 
-    subgraph Embedding_Store ["3. Vector Indexing"]
-        C1["HuggingFace Embeddings\n(sentence-transformers)"]
-        C2[("PostgreSQL\npgvector Index")]
+    subgraph Embedding_Store ["3. Vector Storage"]
+        C1["HuggingFace Embeddings\nsentence-transformers (768-dim)"]
+        C2[("PostgreSQL\npgvector HNSW Index")]
     end
 
     subgraph Retrieval ["4. Scoped Search & Context Injection"]
-        D1["Scoped Document Query\n[Active Document ID]"]
-        D2["Cosine Similarity\nVector Search"]
-        D3["Grader & Context Injector\nTo LangGraph Agent"]
+        D1["Active Context Scope\n[Document ID / Video ID]"]
+        D2["Cosine Similarity Search\nStrict User & Resource Isolation"]
+        D3["Context Injector\nTo LangGraph Agents"]
     end
 
     A1 --> B1
     A2 --> B1
     A3 --> B1
+    A4 --> B3
     B1 --> B2
     B2 --> C1
+    B3 --> C1
     C1 --> C2
     D1 --> D2
     C2 -.-> D2
     D2 --> D3
 ```
 
+### 1. Private In-Memory Document RAG (Zero Disk Storage)
+- **Zero Permanent Disk Storage**: Uploaded PDF and DOCX files are streamed directly into memory buffers (`io.BytesIO`) and discarded immediately after chunking and vector embedding.
+- **Smart OCR Fallback**: For scanned PDFs containing insufficient native text, the pipeline dynamically extracts embedded page images and runs OCR via Tesseract and Pillow.
+- **Document-Level Security Scanning**: In-memory inspection detects credit card numbers, SSNs, and API keys prior to vectorization, presenting an interactive Human-in-the-Loop (HITL) confirmation dialog (`guardrails-dialog.tsx`) if sensitive patterns are detected.
+- **Scoped Document Chat**: Conversations can be locked to a specific document ID so vector queries retrieve context strictly within the active file.
+
+### 2. Interactive YouTube Video RAG with Click-to-Seek
+- **One-Command Video Ingestion**: Simply trigger `/youtube <url>` in chat or use the Documents modal.
+- **Automatic Transcript & Metadata Ingestion**: Uses `youtube-transcript-api` to pull full timestamped video captions and retrieves title, author, and high-res thumbnails via oEmbed.
+- **Time-Window Chunking**: Groups adjacent transcript captions into cohesive semantic chunks with exact `start_time` and `end_time` bounds and formatted timestamp strings (`mm:ss` / `hh:mm:ss`).
+- **Interactive `YouTubeCard` Generative UI**: Emits an interactive video player widget with:
+  - Synchronized embedded YouTube player.
+  - Interactive transcript panel with clickable timestamps that immediately seek playback to the exact moment.
+  - Keyword search filter across video captions.
+  - "Ask about this part" action buttons to ask targeted questions about specific video segments.
+
 ---
 
 ## 🛡️ Security Middleware & Guardrails Architecture
 
-Nexora applies an enterprise-grade, defense-in-depth security model across HTTP transport, agent graph execution, and document vectorization. Every user request and LLM response is evaluated against deterministic policies and regular expression engines to prevent jailbreaks, prompt leakage, and data exfiltration.
+Nexora enforces a defense-in-depth security model across HTTP transport, agent graph execution, and document vectorization.
 
 ```mermaid
 flowchart TD
-    subgraph Client_Transport ["1. HTTP Transport & Gateway Middleware"]
+    subgraph Client_Transport ["1. Transport & Gateway Security"]
         Req["User Request\n(Web or Mobile)"]
         ClientType{"Detect Client Type\n(Header vs Cookie)"}
         CSRF["CSRF Verification Middleware\nDouble-Submit Cookie (x-csrf-token)"]
@@ -218,7 +259,7 @@ flowchart TD
     subgraph Input_Defense ["2. LangGraph Input Guardrails (Pre-Execution)"]
         InNode["Input Guardrail Node"]
         TokenCheck{"Token & Length Check\n(<= 12,000 chars)"}
-        InjectCheck{"Prompt Injection Check\n(Jailbreaks & Roleplays)"}
+        InjectCheck{"Prompt Injection Check\n(Jailbreaks, DAN & Roleplays)"}
         AbuseCheck{"Abuse & Profanity Check\n(Word Boundary Regex)"}
         PIICheck{"PII Leakage Check\n(SSN, Emails, Phones)"}
         BlockedNode["Blocked Response Node\nDirect Policy Refusal (0 LLM Tokens)"]
@@ -231,11 +272,11 @@ flowchart TD
 
     subgraph Output_Defense ["4. Output Guardrails (Post-Execution)"]
         OutNode["Output Guardrail Node"]
-        SecretMask["Secret Redaction Engine\nReplaces Groq, OpenAI, Google Keys & DB URIs\nwith [REDACTED_SECRET]"]
+        SecretMask["Secret Redaction Engine\nReplaces Groq, OpenAI, Google, AWS Keys & DB URIs\nwith [REDACTED_SECRET]"]
         PromptMask["System Leak Sanitizer\nPrevents Internal Instruction Disclosure"]
     end
 
-    subgraph Doc_Defense ["5. Document Ingestion Guardrails"]
+    subgraph Doc_Defense ["5. Knowledge Ingestion Guardrails"]
         DocFile["Uploaded PDF / DOCX / Image"]
         MemScan["In-Memory PII & Credential Scanner\n(Credit Cards, SSN, API Keys, Passwords)"]
         ClientModal["Interactive Confirmation Dialog\nMasked Previews (e.g., ****-1234)"]
@@ -272,73 +313,65 @@ flowchart TD
     MemScan -->|No Findings| DBStore
 ```
 
-### 1. Pre-Execution Input Guardrails (`input_filter.py`)
-Incoming prompts pass through the `input_guardrail_node` prior to invoking any LLM or router:
-- **Token / Character Length Limits**: Rejects inputs exceeding configured thresholds (default: 12,000 characters) to mitigate denial-of-wallet (DoW) and context-overflow attacks.
-- **Prompt Injection & Jailbreak Defense**: Uses regex pattern sets to intercept attempts that instruct the LLM to ignore system directives, adopt persona jailbreaks (e.g., "DAN", "developer mode"), or bypass safety filters.
-- **Abuse & Profanity Filtering**: Employs boundary-matched regex patterns (`\b`) to flag abusive, harassing, or hostile prompts.
-- **PII Leakage Detection**: Scans user prompts for exposed Social Security Numbers, telephone sequences, and email addresses.
-- **Zero-Token Cost Refusal**: When triggered, execution is short-circuited to `blocked_response_node`, returning a clean policy notice without spending LLM inference tokens.
-
-### 2. Post-Execution Output Guardrails (`output_filter.py`)
-Before any assistant message reaches the client SSE stream, `output_guardrail_node` validates the synthesized text:
-- **Secret & Credential Redaction**: Automatically matches and masks production secrets, substituting matches with `[REDACTED_SECRET]`:
-  - Provider API keys: Groq (`groq_*`), OpenAI (`sk-*`), Google Gemini (`AIzaSy*`), GitHub tokens (`ghp_*`), AWS keys (`AKIA*`).
-  - Private cryptographic keys: `-----BEGIN RSA/EC PRIVATE KEY-----`.
-  - Database connection strings: `postgres://`, `mongodb://`, `mysql://`, `redis://`.
-- **System Instruction Leakage Shield**: Intercepts accidental internal prompt regurgitation (e.g., `"You are Nexora's general assistant..."`) and replaces it with a safe default greeting.
-
-### 3. Document PII & Sensitive Credential Scanner (`document_guardrails.py`)
-When users upload documents (PDF, Word, or scanned images) to the knowledge base:
-- **In-Memory Document Scanning**: Every page is analyzed in memory *before* permanent chunking and vector storage.
-- **Entity Coverage**: Detects Credit Cards (Luhn/Major brand patterns), Social Security Numbers, API Keys/Secrets, Private Keys, and Passwords.
-- **Masked Previews**: Masks sensitive strings (e.g., `****-****-****-4321`, `sk-proj-****************`) to protect display privacy.
-- **Interactive Approval Modal (`guardrails-dialog.tsx`)**: The UI halts ingestion and prompts the user with an itemized risk breakdown, requiring explicit confirmation before storing vector chunks.
-
-### 4. Transport & Authentication Security Middleware (`auth.py`)
-- **Dual-Client Authentication**: Automatically handles web clients via secure HTTP-only cookies (`access_token`, `refresh_token`) and mobile clients via standard `Authorization: Bearer <token>` headers.
-- **Double-Submit Cookie CSRF Protection**: For state-changing HTTP requests (`POST`, `PUT`, `PATCH`, `DELETE`), middleware requires the `X-CSRF-Token` header to match the secure `csrf_token` cookie.
-- **Cryptographic Password Hashing**: Passwords are saved using **Argon2id**, the modern standard resistant to GPU-accelerated brute-force attacks.
-- **Token Lifecycle**: Short-lived JWT access tokens (15 minutes) paired with rotating refresh tokens (7 days) stored with `SameSite=Lax` and configurable `Secure` flags.
-
-### 5. Tool Resilience & Error Middleware (`tool_error.py`)
-- **Exponential Backoff**: Wraps external tool calls (Tavily search, math evaluation, RAG queries) with automatic retries (up to 3 attempts, backoff factor 2.0).
-- **Graceful Error Recovery**: Traps tool timeouts and runtime exceptions, transforming raw tracebacks into polite user messages to ensure continuous chat graph execution.
+1. **Pre-Execution Input Guardrails (`input_filter.py`, `abuse_filter.py`)**: Rejects prompts exceeding 12,000 characters, blocks jailbreaks (e.g. DAN, roleplay bypasses), filters profanity, and prevents prompt injection without consuming LLM inference tokens.
+2. **Post-Execution Output Guardrails (`output_filter.py`)**: Redacts secrets and credentials (`[REDACTED_SECRET]`) including Groq, OpenAI, Google Gemini, GitHub, and AWS keys, private RSA keys, and database connection strings. Prevents disclosure of internal system prompts.
+3. **Document Ingestion Guardrails (`document_guardrails.py`)**: Scans document text in-memory for Credit Cards (Luhn algorithm), SSNs, API keys, and passwords before chunks are embedded into pgvector.
+4. **Transport & Authentication (`auth.py`)**: Handles web clients via secure HTTP-only cookies and mobile/API clients via `Authorization: Bearer <token>` headers. Enforces double-submit cookie CSRF validation on mutating HTTP methods.
+5. **Tool Resilience & Exponential Backoff (`tool_error.py`)**: Protects external tool calls (Tavily search, math execution, RAG retrievals) with automatic retries (up to 3 attempts, exponential backoff) and graceful error fallbacks.
 
 ---
 
 ## ✨ Key Features
 
-- **Autonomous Agent Routing**: Automatically identifies whether a prompt demands coding assistance, mathematical derivation, web search, or document synthesis without manual prompt prefixes.
-- **Hybrid Exact Math Engine**: Solves advanced algebra, calculus (derivatives, integrals, limits), factorization, linear algebra, and matrices using SymPy and SciPy, outputting beautiful KaTeX-rendered LaTeX expressions and step-by-step solutions.
-- **Dynamic Generative UI**: The assistant emits typed UI payloads over SSE, prompting the frontend to render interactive widgets:
-  - 📐 **Math Cards**: Interactive symbolic computation cards with copyable LaTeX and step breakdown.
-  - 🕒 **World Clock Cards**: Live timezone rendering with regional flags and offsets.
-  - 🔍 **Search Result Cards**: Interactive citation cards linking directly to live sources.
-  - 📊 **Charts & Data Tables**: Formatted analytical visualizations.
-- **Multimodal Document Intelligence (Agentic RAG)**: Upload documents (PDF, DOCX, PNG, JPG), automatically extract text (including image OCR), generate vector embeddings, and lock active conversations strictly to a single document's context.
-- **Strict Guardrails & Security**: Pre-execution input filters defend against prompt injection and toxic language; post-execution output filters sanitize sensitive data.
-- **Full Observability with LangSmith**: End-to-end telemetry and execution graphs for every LLM node, tool invocation, token stream, and latency profile.
-- **Secure Authentication**: Argon2id password hashing, short-lived JWT access tokens, and refresh tokens preserved in HTTP-only cookies.
+- 🤖 **Autonomous Multi-Agent Routing**: Automatically classifies queries to dispatch to specialized Chat, Coding, or Math agents without requiring manual prompt prefixes.
+- 📺 **Interactive YouTube Video RAG**: Ingest any YouTube video using `/youtube <URL>`, extract timestamped transcripts, and interact using an embedded player with clickable timestamp seeking and caption filtering.
+- 📄 **Private In-Memory Document RAG**: Zero permanent disk storage; processes PDFs and Word documents in memory with optional OCR fallback and strict document focus scoping.
+- 🧮 **Hybrid Symbolic Math Engine**: Evaluates complex calculus (derivatives, integrals, limits), algebra, and matrices via SymPy and SciPy, generating KaTeX-formatted step-by-step solutions.
+- 🏷️ **ChatGPT-Style Automated Title Generation**: Automatically derives concise 3–5 word conversation titles dynamically from user prompts and document context.
+- 📌 **Pinned Messages & Thread Organization**: Pin vital responses within any conversation thread for quick reference; filter, archive, and manage conversations effortlessly.
+- 🌐 **Real-Time Web Search Grounding**: Live search integration via Tavily provides up-to-date facts, current events, and source citations with domain attribution.
+- 🛡️ **Dual-Layer Guardrails & HITL**: Pre- and post-execution security guardrails filter prompt injections and redact production secrets, complemented by Human-in-the-Loop sensitive data confirmation.
+- 📊 **Dynamic Generative UI**: The assistant emits typed UI payloads over SSE to render rich, interactive widgets inline.
+- 🔭 **End-to-End Observability**: Native integration with LangSmith for comprehensive tracing of agent nodes, tool invocations, token streams, and latency metrics.
+
+---
+
+## 🎨 Dynamic Generative UI Registry
+
+Nexora's backend emits structured `ui` events over the SSE stream that the Next.js client renders dynamically:
+
+| Component Type | Component File | Description & Capabilities |
+| :--- | :--- | :--- |
+| `youtube` / `youtube_card` | `youtube-card.tsx` | Embedded video player, searchable captions, and interactive click-to-seek timestamp navigation. |
+| `math` / `math_card` | `math-card.tsx` | Symbolic math card with verified step breakdown, copyable LaTeX, and KaTeX rendering. |
+| `time` / `time_card` | `time-card.tsx` | Interactive world clock card displaying live regional time, timezones, and country flags. |
+| `search_results` | `search-results.tsx` | Source attribution cards linking directly to live web sources with domain favicons. |
+| `chart` | `chart-card.tsx` | Visual data representations (bar, line, analytical charts) rendered dynamically. |
+| `table` | `data-table.tsx` | Formatted tabular data display with sorting and structured column formatting. |
+| `card` | `info-card.tsx` | Highlighted key takeaway and structured information summary card. |
+| `project` | `project-card.tsx` | Multi-step software project and architecture plan card. |
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Layer | Technologies |
+| Layer | Technologies & Libraries |
 | :--- | :--- |
-| **Frontend Framework** | [Next.js 16](https://nextjs.org/) (App Router), [React 19](https://react.dev/) |
-| **Styling & Animation** | [Tailwind CSS v4](https://tailwindcss.com/), [Motion (Framer Motion)](https://motion.dev/), [Lucide React](https://lucide.dev/) |
-| **Markdown & Math** | [KaTeX](https://katex.org/), `react-markdown`, `remark-math`, `rehype-katex`, `remark-gfm` |
-| **Backend API** | [FastAPI](https://fastapi.tiangolo.com/), [Uvicorn](https://www.uvicorn.org/), [Python 3.11](https://www.python.org/) |
-| **Agent Orchestration** | [LangGraph](https://github.com/langchain-ai/langgraph), [LangChain Core](https://github.com/langchain-ai/langchain) |
-| **LLM & Inference** | [Groq](https://groq.com/) (Llama-3), [Google Gemini](https://ai.google.dev/) (`langchain-google-genai`) |
-| **Search & External Data** | [Tavily Search API](https://tavily.com/) |
-| **Document Processing** | `pypdf`, `python-docx`, `pytesseract` (OCR), `Pillow` |
-| **Math & Symbolic Engine** | [SymPy](https://www.sympy.org/), [SciPy](https://scipy.org/), [NumPy](https://numpy.org/) |
-| **Database & Vector Store**| [PostgreSQL](https://www.postgresql.org/) with [pgvector](https://github.com/pgvector/pgvector), [SQLAlchemy 2.0 Async](https://www.sqlalchemy.org/), [Alembic](https://alembic.sqlalchemy.org/) |
-| **Observability** | [LangSmith](https://smith.langchain.com/) |
-| **Packaging & Dev** | [uv](https://github.com/astral-sh/uv), [pnpm](https://pnpm.io/), [Docker](https://www.docker.com/) & Docker Compose |
+| **Frontend Framework** | [Next.js 16.3.4](https://nextjs.org/) (App Router), [React 19.2.8](https://react.dev/), [TypeScript 5](https://www.typescriptlang.org/) |
+| **Styling & Animation** | [Tailwind CSS v4](https://tailwindcss.com/), [Motion 13.2](https://motion.dev/), [Lucide React](https://lucide.dev/), [Base UI](https://base-ui.com/) |
+| **Markdown & Math Rendering** | [KaTeX 0.18.7](https://katex.org/), `react-markdown`, `remark-math`, `rehype-katex`, `remark-gfm` |
+| **Backend API** | [FastAPI 0.141.1](https://fastapi.tiangolo.com/), [Uvicorn 0.52.4](https://www.uvicorn.org/), [Python 3.11](https://www.python.org/) |
+| **Agent Orchestration** | [LangGraph 1.2.11](https://github.com/langchain-ai/langgraph), [LangChain Core 1.6.2](https://github.com/langchain-ai/langchain) |
+| **LLM & Inference** | [Groq](https://groq.com/) (Llama-3 via `langchain-groq`), [Google Gemini](https://ai.google.dev/) (`langchain-google-genai`) |
+| **Web Search** | [Tavily Search API](https://tavily.com/) (`langchain-tavily 0.2.18`) |
+| **Media & Transcripts** | [youtube-transcript-api 0.6.0](https://pypi.org/project/youtube-transcript-api/) |
+| **Document Processing & OCR** | `pypdf 6.19.0`, `python-docx 1.2.0`, `pytesseract 0.3.13`, `Pillow 12.3.0` |
+| **Math & Symbolic Engine** | [SymPy 1.13.0](https://www.sympy.org/), [SciPy 1.12.0](https://scipy.org/), [NumPy](https://numpy.org/) |
+| **Database & Vector Store** | [PostgreSQL](https://www.postgresql.org/) with [pgvector 0.5.0](https://github.com/pgvector/pgvector), [SQLAlchemy 2.0.52 Async](https://www.sqlalchemy.org/), [Alembic 1.19.2](https://alembic.sqlalchemy.org/) |
+| **Vector Embeddings** | `sentence-transformers 6.0.1`, `langchain-huggingface 1.2.2` (768-dimensional embeddings) |
+| **Security & Cryptography** | `argon2-cffi 23.1.0`, `pyjwt 2.8.0` |
+| **Observability** | [LangSmith](https://smith.langchain.com/) (`langsmith 0.1.0`) |
+| **Package & Dev Tooling** | [`uv`](https://github.com/astral-sh/uv), [`pnpm 11.21.0`](https://pnpm.io/), [Docker](https://www.docker.com/) & Docker Compose |
 
 ---
 
@@ -346,43 +379,68 @@ When users upload documents (PDF, Word, or scanned images) to the knowledge base
 
 ```plaintext
 Nexora/
-├── client/                     # Next.js 16 Frontend
-│   ├── app/                    # App Router (pages & layouts)
-│   │   ├── (main)/             # Landing page and primary entry
-│   │   ├── chat/               # Real-time chat workspace
-│   │   └── reset-password/     # Password recovery flows
-│   ├── components/             # Reusable UI components
-│   │   ├── auth/               # Login, registration, & modal dialogs
-│   │   ├── chat/               # Chat streams, sidebar, input, & message items
-│   │   │   └── generative/     # Generative UI cards (Math, Time, Search, Tables)
-│   │   └── ui/                 # Accessible base UI primitives
-│   ├── hooks/                  # Custom React hooks (streaming, auth, responsive)
-│   ├── lib/                    # API client, utilities, and styling helpers
+├── client/                               # Next.js 16.3 Frontend Application
+│   ├── app/                              # App Router pages and layouts
+│   │   ├── (main)/                       # Landing page with interactive feature mockups
+│   │   ├── chat/                         # Real-time multi-agent chat workspace & YouTube player
+│   │   └── reset-password/               # Password recovery and reset flows
+│   ├── components/                       # Reusable React components
+│   │   ├── auth/                         # Login, registration, & modal dialogs
+│   │   ├── chat/                         # Chat stream views, sidebar, chat input, & message items
+│   │   │   ├── generative/               # Generative UI cards (YouTube, Math, Time, Search, Tables)
+│   │   │   │   ├── chart-card.tsx        # Dynamic chart rendering
+│   │   │   │   ├── data-table.tsx        # Tabular data display
+│   │   │   │   ├── info-card.tsx         # Structured info cards
+│   │   │   │   ├── math-card.tsx         # KaTeX-rendered symbolic math cards
+│   │   │   │   ├── project-card.tsx      # Project summary cards
+│   │   │   │   ├── search-results.tsx    # Web search citation cards
+│   │   │   │   ├── time-card.tsx         # World clock cards
+│   │   │   │   └── youtube-card.tsx      # Interactive YouTube video player with timestamp seek
+│   │   │   ├── documents-dialog.tsx      # In-memory document and YouTube URL ingestion modal
+│   │   │   └── guardrails-dialog.tsx     # Sensitive data PII confirmation dialog
+│   │   ├── landing/                      # Landing page hero, showcase, and feature cards
+│   │   └── ui/                           # Base UI primitives
+│   ├── hooks/                            # Custom hooks (SSE streaming, auth, responsive layout)
+│   ├── lib/                              # API clients, constants, and utilities
 │   └── package.json
 │
-├── server/                     # FastAPI Backend & Agentic AI
-│   ├── alembic/                # Database migrations
+├── server/                               # FastAPI Asynchronous Backend & Agentic AI
+│   ├── alembic/                          # Database schema migration scripts
 │   ├── app/
-│   │   ├── ai/                 # LangGraph Multi-Agent Architecture
-│   │   │   ├── agents/         # Router, Chat, Coding, & Math agents
-│   │   │   ├── core/           # State definitions, LLM factories, & memory
-│   │   │   ├── guardrails/     # Input abuse filters & output sanitizers
-│   │   │   ├── middleware/     # Tool retry logic & error handlers
-│   │   │   ├── rag/            # Chunking, loaders, embeddings, & vector store
-│   │   │   ├── tool/           # SymPy math tool, Tavily search, time tool
-│   │   │   └── graph.py        # Master StateGraph definition & compilation
-│   │   ├── api/v1/             # REST Endpoints (auth, ai, chat, memory, documents)
-│   │   ├── core/               # Configuration, security settings, & database engine
-│   │   ├── models/             # SQLAlchemy ORM models (Users, Chats, Documents)
-│   │   ├── schemas/            # Pydantic validation schemas
-│   │   ├── services/           # Business logic & repository services
-│   │   └── main.py             # FastAPI entrypoint & lifecycle hooks
-│   ├── tests/                  # Pytest automated test suite
-│   ├── Dockerfile
+│   │   ├── ai/                           # LangGraph Multi-Agent Architecture
+│   │   │   ├── agents/                   # Router, Chat, Coding, & Math agent implementations
+│   │   │   ├── core/                     # Agent state definitions, LLM factories, & memory saver
+│   │   │   ├── guardrails/               # Input filters, abuse detectors, output sanitizers, & doc PII scanner
+│   │   │   ├── middleware/               # Tool retry policies & exception handlers
+│   │   │   ├── rag/                      # In-memory loaders, YouTube ingester, chunkers, & vector store
+│   │   │   │   ├── loaders.py            # In-memory PDF, DOCX, & OCR loader
+│   │   │   │   ├── youtube_loader.py     # YouTube transcript extractor & chunking pipeline
+│   │   │   │   ├── chunking.py           # Recursive semantic text chunker
+│   │   │   │   └── vector_store.py       # pgvector similarity search & persistence
+│   │   │   ├── tool/                     # SymPy math tool, Tavily search tool, world time tool
+│   │   │   ├── title_generator.py        # ChatGPT-style dynamic thread title generator
+│   │   │   └── graph.py                  # Master LangGraph StateGraph compilation
+│   │   ├── api/v1/                       # REST Endpoints
+│   │   │   ├── endpoints/
+│   │   │   │   ├── auth.py               # Authentication, registration, & user sessions
+│   │   │   │   ├── ai.py                 # Real-time SSE streaming endpoint
+│   │   │   │   ├── chat.py               # Conversation threads, auto-titling, & message history
+│   │   │   │   ├── pin.py                # Pinned message management
+│   │   │   │   ├── documents.py          # Document upload & YouTube video ingestion
+│   │   │   │   └── memory.py             # Long-term user memories & semantic search
+│   │   │   └── api.py                    # API v1 router registry
+│   │   ├── core/                         # Configuration settings, security constants, & database engine
+│   │   ├── models/                       # SQLAlchemy ORM models (User, Chat, Pin, Document, Memory)
+│   │   ├── schemas/                      # Pydantic data validation schemas
+│   │   ├── services/                     # Business logic and database operations
+│   │   └── main.py                       # FastAPI application entrypoint & middleware
+│   ├── tests/                            # Pytest automated test suite
+│   ├── Dockerfile                        # Production multi-stage Dockerfile
+│   ├── Dockerfile.dev                    # Fast development Dockerfile with hot reloading
 │   └── pyproject.toml
 │
-├── docker-compose.yml          # Container orchestration for server & local development
-└── README.md                   # Project documentation
+├── docker-compose.yml                    # Container orchestration for development server
+└── README.md                             # Comprehensive project documentation
 ```
 
 ---
@@ -391,28 +449,28 @@ Nexora/
 
 ### Prerequisites
 
-Ensure you have the following installed:
+Ensure you have the following tools installed:
 - [Git](https://git-scm.com/)
-- [Node.js](https://nodejs.org/) (v20+ recommended) and [pnpm](https://pnpm.io/)
+- [Node.js](https://nodejs.org/) (v20+ recommended) and [pnpm](https://pnpm.io/) (`>= 10`)
 - [Python 3.11](https://www.python.org/) and [`uv`](https://github.com/astral-sh/uv)
-- [PostgreSQL](https://www.postgresql.org/) with `pgvector` enabled (or Docker)
-- [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) (optional, for image OCR)
+- [PostgreSQL](https://www.postgresql.org/) with the `pgvector` extension installed
+- [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) (optional, for scanned document OCR)
 
 ---
 
 ### Environment Configuration
 
 #### 1. Backend Configuration (`server/.env`)
-Create a `.env` file inside the `server/` directory:
+Create a `.env` file in the `server/` directory:
 
 ```env
-# Application
+# Application Settings
 PROJECT_NAME=Nexora
 VERSION=1.0.0
 FRONTEND_URL=http://localhost:3000
 
-# Database (PostgreSQL with pgvector)
-DATABASE_URL=
+# PostgreSQL with pgvector
+DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/nexora_db
 
 # Security & Authentication
 JWT_SECRET_KEY=your_super_secret_jwt_key_here
@@ -421,25 +479,25 @@ ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=7
 
 # LLM Providers
-GROQ_API_KEY=
-GROQ_MODEL=
+GROQ_API_KEY=gsk_...
+GROQ_MODEL=llama3-70b-8192
 
 GOOGLE_API_KEY=AIzaSy...
-GEMINI_MODEL=
+GEMINI_MODEL=gemini-1.5-flash
 
-# Embeddings & Search
-HUGGINGFACE_API_KEY=
-EMBEDDING_MODEL=
-TAVILY_API_KEY=
+# Embeddings & Web Search
+HUGGINGFACE_API_KEY=hf_...
+EMBEDDING_MODEL=sentence-transformers/all-mpnet-base-v2
+TAVILY_API_KEY=tvly-...
 
 # Observability (Optional)
 LANGSMITH_TRACING=true
-LANGSMITH_API_KEY=
-LANGSMITH_PROJECT=
+LANGSMITH_API_KEY=lsv2_...
+LANGSMITH_PROJECT=nexora-development
 ```
 
 #### 2. Frontend Configuration (`client/.env.local`)
-Create a `.env.local` file inside the `client/` directory:
+Create a `.env.local` file in the `client/` directory:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
@@ -449,13 +507,15 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 
 ### Running with Docker Compose (Recommended)
 
-Start the backend service and database using Docker Compose:
+Start the backend container in development mode with live code reloading:
 
 ```bash
 docker compose up --build
 ```
 
-Then start the frontend in a separate terminal:
+The server container maps to port `8000` and automatically mounts your local code volume for immediate hot-reloads via `WATCHFILES_FORCE_POLLING`.
+
+In a separate terminal, launch the frontend development server:
 
 ```bash
 cd client
@@ -463,7 +523,7 @@ pnpm install
 pnpm dev
 ```
 
-Visit [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
@@ -479,7 +539,7 @@ Visit [http://localhost:3000](http://localhost:3000) in your browser.
    ```bash
    uv sync
    ```
-3. Run database migrations:
+3. Apply database migrations:
    ```bash
    uv run alembic upgrade head
    ```
@@ -487,7 +547,7 @@ Visit [http://localhost:3000](http://localhost:3000) in your browser.
    ```bash
    uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
    ```
-   The interactive API documentation is available at [http://localhost:8000/docs](http://localhost:8000/docs).
+   Interactive Swagger documentation is available at [http://localhost:8000/docs](http://localhost:8000/docs).
 
 #### Frontend Setup (`client`)
 
@@ -503,61 +563,99 @@ Visit [http://localhost:3000](http://localhost:3000) in your browser.
    ```bash
    pnpm dev
    ```
-4. Open [http://localhost:3000](http://localhost:3000).
+4. Access the web interface at [http://localhost:3000](http://localhost:3000).
 
 ---
 
 ## 📡 API Reference & Streaming Protocol
 
-Nexora exposes a REST and SSE streaming interface under `/api/v1`:
+### REST Endpoints
 
-| Endpoint | Method | Description |
-| :--- | :--- | :--- |
-| `/api/v1/auth/register` | `POST` | Register a new user account |
-| `/api/v1/auth/login` | `POST` | Authenticate and issue secure HTTP-only cookies |
-| `/api/v1/auth/me` | `GET` | Retrieve the authenticated user profile |
-| `/api/v1/ai/stream` | `POST` | **SSE Stream**: Dispatches query through LangGraph agents |
-| `/api/v1/chat/conversations` | `GET` | List chat sessions for the authenticated user |
-| `/api/v1/documents/upload` | `POST` | Upload and vectorize PDF, DOCX, or image files |
-| `/api/v1/documents` | `GET` | List ingested documents in user knowledge base |
-| `/api/v1/memory` | `GET` | Inspect long-term extracted user facts and preferences |
+Nexora exposes a clean, modular REST interface versioned under `/api/v1`:
 
-### SSE Event Stream Types
+| Endpoint | Method | Tag | Description |
+| :--- | :---: | :--- | :--- |
+| `/api/v1/auth/register` | `POST` | Authentication | Register a new user account |
+| `/api/v1/auth/login` | `POST` | Authentication | Authenticate user and issue secure HTTP-only cookies |
+| `/api/v1/auth/refresh` | `POST` | Authentication | Rotate refresh token and issue new access token |
+| `/api/v1/auth/logout` | `POST` | Authentication | Revoke session and clear authentication cookies |
+| `/api/v1/auth/me` | `GET` | Authentication | Retrieve profile of currently authenticated user |
+| `/api/v1/ai/stream` | `POST` | AI Execution | **SSE Stream**: Execute query across LangGraph multi-agent network |
+| `/api/v1/chat/conversations` | `GET` | Chat Storage | List all conversations for authenticated user |
+| `/api/v1/chat/conversations` | `POST` | Chat Storage | Create conversation with automatic ChatGPT-style title generation |
+| `/api/v1/chat/conversations/{id}` | `GET` | Chat Storage | Fetch conversation details along with full message history |
+| `/api/v1/chat/conversations/{id}` | `PATCH` | Chat Storage | Update conversation title, pinned status, or archive state |
+| `/api/v1/chat/conversations/{id}` | `DELETE` | Chat Storage | Delete a specific conversation thread |
+| `/api/v1/chat/conversations` | `DELETE` | Chat Storage | Delete all conversations for current user |
+| `/api/v1/chat/conversations/{id}/generate-title` | `POST` | Chat Storage | Generate dynamic AI title and update the conversation |
+| `/api/v1/pins` | `POST` | Pinned Messages | Pin an important message within a conversation |
+| `/api/v1/pins` | `GET` | Pinned Messages | List user's pinned messages (optionally filter by `conversation_id`) |
+| `/api/v1/pins/{pin_id}` | `DELETE` | Pinned Messages | Unpin / delete a pinned message |
+| `/api/v1/documents/upload` | `POST` | Documents & RAG | Ingest in-memory PDF or DOCX file with PII detection |
+| `/api/v1/documents/youtube` | `POST` | Documents & RAG | Ingest YouTube video transcript & metadata into pgvector |
+| `/api/v1/documents` | `GET` | Documents & RAG | List all ingested documents and videos owned by user |
+| `/api/v1/documents/{id}` | `GET` | Documents & RAG | Retrieve metadata for an ingested document or video |
+| `/api/v1/documents/{id}/youtube`| `GET` | Documents & RAG | Fetch detailed transcript snippets and timestamps for a video |
+| `/api/v1/documents/{id}` | `DELETE` | Documents & RAG | Delete document or video and purge vector embeddings |
+| `/api/v1/memory` | `GET` | Long-Term Memory | List stored long-term facts and user preferences |
+| `/api/v1/memory` | `POST` | Long-Term Memory | Manually store a persistent fact or preference |
+| `/api/v1/memory/search` | `GET` | Long-Term Memory | Semantic vector search across user memories |
+| `/api/v1/memory/{id}` | `DELETE` | Long-Term Memory | Delete a specific memory item |
 
-The `/api/v1/ai/stream` endpoint yields Server-Sent Events with structured JSON payloads:
+### SSE Streaming Events Protocol
 
-- **`status`**: Agent node progress updates (`"Evaluating safety policies..."`, `"Analyzing request..."`).
-- **`search`**: Live status and query metadata for internet or knowledge base searches.
-- **`ui`**: Typed payload for generative cards (e.g. `type: "math"` with expression and steps; `type: "time"` with timezone data).
-- **`token`**: Raw LLM output streaming tokens for markdown rendering.
-- **`done`**: Emitted upon successful stream completion.
-- **`error`**: Emitted if any step encounters an unrecoverable exception.
+The `/api/v1/ai/stream` endpoint streams real-time Server-Sent Events with structured JSON payloads:
+
+- **`status`**: Agent node progress updates (e.g. `{"step": "Evaluating safety policies..."}`, `{"step": "Routing to Math Agent..."}`).
+- **`search`**: Metadata for live web searches or document vector queries (e.g. query terms and retrieved domain sources).
+- **`ui`**: Typed payloads for Generative UI cards:
+  - `youtube`: Video ID, title, channel name, thumbnail, and timestamped transcript snippets.
+  - `math`: Expression, LaTeX string, and step-by-step mathematical derivation.
+  - `time`: Current timezone, local time, and country metadata.
+  - `search_results`: Citations, page titles, and destination URLs.
+  - `chart` / `table`: Analytical datasets and visualization specifications.
+- **`token`**: Incremental LLM text tokens streamed directly to Markdown and KaTeX renderers.
+- **`done`**: Emitted upon successful completion of graph execution.
+- **`error`**: Dispatched if any stage encounters an unrecoverable exception.
 
 ---
 
 ## 🧪 Testing
 
-The backend includes a comprehensive suite of automated tests covering guardrails, isolation, RAG, and the math engine:
+The backend includes a comprehensive suite of automated tests covering guardrails, isolation, YouTube ingestion, and the symbolic math engine:
 
 ```bash
 cd server
 uv run pytest
 ```
 
-To run a specific test suite:
-```bash
-# Test the SymPy hybrid math tool
-uv run pytest tests/test_math_tool.py
+### Targeted Test Suites
 
-# Test input and output safety guardrails
+```bash
+# Test YouTube video transcript ingestion and chunking
+uv run pytest tests/test_youtube_ingest.py
+
+# Test in-memory document PII scanning and guardrails
+uv run pytest tests/test_document_guardrails.py
+
+# Test prompt injection and output secret redaction guardrails
 uv run pytest tests/test_guardrails.py
 
-# Test RAG document isolation and search
+# Test RAG document isolation across users
 uv run pytest tests/test_rag_isolation.py
+
+# Test SymPy symbolic math computation and LaTeX formatting
+uv run pytest tests/test_math_tool.py
+
+# Test authentication, session cookies, and JWT token rotation
+uv run pytest tests/test_auth.py
+
+# Test conversation storage, auto-titling, and memory retrieval
+uv run pytest tests/test_chat_memory.py
 ```
 
 ---
 
 ## 📄 License
 
-This project is licensed under the terms of the MIT License.
+This project is licensed under the terms of the [MIT License](LICENSE).
