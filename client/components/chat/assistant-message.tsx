@@ -9,7 +9,7 @@ import { ChatMessage } from "@/types/chat"
 import { GenerativeUIRenderer } from "./generative-ui"
 import { AIThinking } from "./ai-thinking"
 import { MessageActions } from "./message-actions"
-import { Sparkles, Copy, Check, Terminal, Globe, ExternalLink, Pin, FileText } from "lucide-react"
+import { Sparkles, Copy, Check, Terminal, Globe, ExternalLink, Pin, FileText, Play, Tv } from "lucide-react"
 import { SearchResultItem } from "@/types/chat"
 
 
@@ -103,6 +103,7 @@ function DocumentCitations({ content }: { content: string }) {
       </div>
       <div className="flex flex-wrap gap-2">
         {citations.map((c, idx) => {
+          const isYouTube = c.filename.toLowerCase().includes("youtube")
           const isPdf = c.filename.toLowerCase().endsWith(".pdf")
           return (
             <div
@@ -110,13 +111,16 @@ function DocumentCitations({ content }: { content: string }) {
               className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-slate-300 shrink-0 hover:border-emerald-500/40 transition-colors"
             >
               <span
-                className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                  isPdf
+                className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold flex items-center gap-1 ${
+                  isYouTube
+                    ? "bg-red-500/20 text-red-300 border border-red-500/30"
+                    : isPdf
                     ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
                     : "bg-teal-500/20 text-teal-300 border border-teal-500/30"
                 }`}
               >
-                {isPdf ? "PDF" : "DOCX"}
+                {isYouTube ? <Tv className="h-2.5 w-2.5 inline" /> : null}
+                {isYouTube ? "YouTube" : isPdf ? "PDF" : "DOCX"}
               </span>
               <span className="truncate max-w-[200px] font-medium text-[11px] text-slate-200">
                 {c.filename}
@@ -265,6 +269,35 @@ export function AssistantMessage({ message, onRegenerate, isPinned, onTogglePin 
                   if (!isInline) {
                     return <CodeBlock language={match ? match[1] : "plaintext"} value={codeString} />
                   }
+
+                  // Check if this inline code is a timestamp (e.g. 02:15, [02:15], 01:23:45)
+                  const cleaned = codeString.replace(/[\[\]]/g, "").trim()
+                  const timeMatch = /^(?:(\d{1,2}):)?(\d{1,2}):(\d{2})$/.exec(cleaned)
+                  if (timeMatch) {
+                    const hrs = timeMatch[1] ? parseInt(timeMatch[1], 10) : 0
+                    const mins = parseInt(timeMatch[2], 10)
+                    const secs = parseInt(timeMatch[3], 10)
+                    const totalSeconds = hrs * 3600 + mins * 60 + secs
+
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.dispatchEvent(
+                            new CustomEvent("nexora:seek-youtube", {
+                              detail: { seconds: totalSeconds },
+                            })
+                          )
+                        }}
+                        className="inline-flex items-center gap-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-white font-mono text-xs px-1.5 py-0.5 rounded border border-red-500/40 transition-colors cursor-pointer"
+                        title={`Click to jump to ${cleaned} in video`}
+                      >
+                        <Play className="h-2.5 w-2.5 fill-current text-red-400" />
+                        {cleaned}
+                      </button>
+                    )
+                  }
+
                   return (
                     <code className="bg-white/10 text-emerald-300 font-mono text-xs px-1.5 py-0.5 rounded border border-white/10" {...props}>
                       {children}
@@ -291,11 +324,33 @@ export function AssistantMessage({ message, onRegenerate, isPinned, onTogglePin 
                     {children}
                   </blockquote>
                 ),
-                a: ({ href, children }) => (
-                  <a href={href} target="_blank" rel="noopener noreferrer" className="text-emerald-400 underline underline-offset-4 hover:text-emerald-300">
-                    {children}
-                  </a>
-                ),
+                a: ({ href, children }) => {
+                  const isYouTubeLink = href && (href.includes("youtube.com") || href.includes("youtu.be"))
+                  const timeMatch = href && href.match(/[?&]t=(\d+)s?/)
+
+                  return (
+                    <a
+                      href={href}
+                      onClick={(e) => {
+                        if (isYouTubeLink && timeMatch) {
+                          e.preventDefault()
+                          const sec = parseInt(timeMatch[1], 10)
+                          window.dispatchEvent(
+                            new CustomEvent("nexora:seek-youtube", {
+                              detail: { seconds: sec },
+                            })
+                          )
+                        }
+                      }}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-emerald-400 underline underline-offset-4 hover:text-emerald-300 inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      {isYouTubeLink && <Play className="h-2.5 w-2.5 fill-current text-red-400 inline" />}
+                      {children}
+                    </a>
+                  )
+                },
                 table: ({ children }) => (
                   <div className="overflow-x-auto my-3 rounded-xl border border-white/10 shadow-lg">
                     <table className="w-full text-xs text-slate-200 border-collapse">{children}</table>

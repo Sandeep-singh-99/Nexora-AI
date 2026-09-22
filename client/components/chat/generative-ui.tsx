@@ -9,6 +9,7 @@ import { SearchResults } from "./generative/search-results"
 import { ProjectCard } from "./generative/project-card"
 import { TimeCard } from "./generative/time-card"
 import { MathCard } from "./generative/math-card"
+import { YouTubeCard } from "./generative/youtube-card"
 import { AlertCircle } from "lucide-react"
 
 // Explicit safe component registry map
@@ -22,6 +23,9 @@ const componentRegistry: Record<string, React.ComponentType<any>> = {
   time_card: TimeCard,
   math: MathCard,
   math_card: MathCard,
+  youtube: YouTubeCard,
+  youtube_card: YouTubeCard,
+  youtube_player: YouTubeCard,
 }
 
 interface GenerativeUIRendererProps {

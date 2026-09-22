@@ -4,6 +4,7 @@ import {
   DocumentListResponse,
   DocumentQueryRequest,
   DocumentQueryResponse,
+  YouTubeDocumentResponse,
 } from "@/types/document";
 
 export const MAX_DOCUMENT_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
@@ -121,3 +122,14 @@ export async function queryDocumentsApi(
   const response = await api.post<DocumentQueryResponse>("/documents/query", payload);
   return response.data;
 }
+
+export async function ingestYouTubeVideoApi(url: string): Promise<YouTubeDocumentResponse> {
+  const response = await api.post<YouTubeDocumentResponse>("/documents/youtube", { url });
+  return response.data;
+}
+
+export async function fetchYouTubeDocumentDetailsApi(documentId: string): Promise<YouTubeDocumentResponse> {
+  const response = await api.get<YouTubeDocumentResponse>(`/documents/${documentId}/youtube`);
+  return response.data;
+}
+

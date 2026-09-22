@@ -15,6 +15,7 @@ import {
   FileCode,
   MessageSquareText,
   Check,
+  Tv,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -23,6 +24,7 @@ import {
   fetchDocumentsApi,
   uploadDocumentApi,
   deleteDocumentApi,
+  ingestYouTubeVideoApi,
   validateDocumentFile,
   MAX_DOCUMENT_SIZE_BYTES,
   SensitiveDataFinding,
@@ -58,6 +60,8 @@ export function DocumentsDialog({
   const [documents, setDocuments] = useState<UserDocument[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [youtubeUrl, setYoutubeUrl] = useState("")
+  const [isImportingYouTube, setIsImportingYouTube] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [justUploadedDoc, setJustUploadedDoc] = useState<UserDocument | null>(null)
@@ -144,6 +148,27 @@ export function DocumentsDialog({
     const fileToUpload = sensitivePrompt.file
     setSensitivePrompt(null)
     await handleFileUpload(fileToUpload, true)
+  }
+
+  const handleImportYouTube = async () => {
+    if (!youtubeUrl.trim() || isImportingYouTube) return
+    setErrorMsg(null)
+    setSuccessMsg(null)
+    setIsImportingYouTube(true)
+    try {
+      const doc = await ingestYouTubeVideoApi(youtubeUrl.trim())
+      setDocuments((prev) => [doc, ...prev])
+      setJustUploadedDoc(doc)
+      setSuccessMsg(`YouTube video "${doc.filename}" transcribed and indexed successfully (${doc.total_chunks} chunks).`)
+      setYoutubeUrl("")
+      onDocumentUploaded?.(doc)
+    } catch (err: any) {
+      console.error("YouTube import error:", err)
+      const detail = err.response?.data?.detail || err.message || "Failed to transcribe YouTube video."
+      setErrorMsg(detail)
+    } finally {
+      setIsImportingYouTube(false)
+    }
   }
 
   const handleDelete = async (docId: string, filename: string) => {
@@ -306,6 +331,49 @@ export function DocumentsDialog({
             )}
           </div>
 
+          {/* YouTube Video URL Import */}
+          <div className="p-3.5 rounded-2xl border border-red-500/20 bg-red-950/20">
+            <div className="flex items-center gap-2 mb-2">
+              <Tv className="h-4 w-4 text-red-400" />
+              <span className="text-xs font-semibold text-white">Import YouTube Video</span>
+              <span className="text-[10px] text-slate-400 font-mono ml-auto">Automatic Transcription</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    handleImportYouTube()
+                  }
+                }}
+                placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
+                className="flex-1 bg-[#070A0F] border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-red-500/50"
+              />
+              <Button
+                size="sm"
+                type="button"
+                disabled={!youtubeUrl.trim() || isImportingYouTube}
+                onClick={handleImportYouTube}
+                className="bg-red-600 hover:bg-red-500 text-white text-xs px-3 h-8 shrink-0 cursor-pointer"
+              >
+                {isImportingYouTube ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    Transcribing...
+                  </>
+                ) : (
+                  <>
+                    <Tv className="h-3.5 w-3.5 mr-1.5" />
+                    Transcribe & Index
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
           {/* Privacy Banner */}
           <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/[0.02] border border-white/5 text-[11px] text-slate-400">
             <Shield className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
@@ -330,12 +398,13 @@ export function DocumentsDialog({
                 <FileCode className="h-8 w-8 text-slate-600 mx-auto mb-2" />
                 <p className="text-xs text-slate-400">No documents uploaded yet.</p>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Upload a PDF or Word document above to ask questions with Agentic RAG.
+                  Upload a PDF, Word document or transcribe a YouTube video to ask questions with Agentic RAG.
                 </p>
               </div>
             ) : (
               <div className="space-y-2">
                 {documents.map((doc) => {
+                  const isYouTube = doc.file_type.toLowerCase() === "youtube"
                   const isPdf = doc.file_type.toLowerCase() === "pdf"
                   const isDeleting = deletingId === doc.id
                   const isCurrentlyActive = activeDocumentId === doc.id
@@ -352,12 +421,14 @@ export function DocumentsDialog({
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div
                           className={`flex h-9 w-9 items-center justify-center rounded-lg font-mono text-[10px] font-bold shrink-0 ${
-                            isPdf
+                            isYouTube
+                              ? "bg-red-500/15 text-red-400 border border-red-500/30"
+                              : isPdf
                               ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
                               : "bg-teal-500/10 text-teal-400 border border-teal-500/20"
                           }`}
                         >
-                          {isPdf ? "PDF" : "DOCX"}
+                          {isYouTube ? <Tv className="h-4 w-4" /> : isPdf ? "PDF" : "DOCX"}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">

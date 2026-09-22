@@ -14,6 +14,9 @@ from app.schemas.document import (
     DocumentListResponse,
     DocumentQueryRequest,
     DocumentQueryResponse,
+    YouTubeIngestRequest,
+    YouTubeDocumentResponse,
+    YouTubeSnippetResponse,
 )
 from app.ai.rag.vector_store import DocumentVectorStore
 from app.ai.rag.rag_agent import run_agentic_rag
@@ -116,6 +119,61 @@ async def upload_document(
         )
 
 
+@router.post("/youtube", response_model=YouTubeDocumentResponse, status_code=status.HTTP_201_CREATED)
+async def ingest_youtube_video(
+    payload: YouTubeIngestRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Ingest a YouTube video transcript into pgvector RAG:
+    - Fetches video metadata and caption transcript snippets.
+    - Chunks transcript with start/end timestamps and URLs.
+    - Generates 768-dim embeddings and stores in pgvector.
+    - Returns full snippet list with timestamps for interactive playback.
+    """
+    try:
+        doc, yt_data = await DocumentVectorStore.ingest_youtube_video(
+            db=db,
+            user_id=current_user.id,
+            url=payload.url,
+        )
+
+        snippets_resp = [
+            YouTubeSnippetResponse(
+                text=s.text,
+                start=s.start,
+                duration=s.duration,
+                timestamp=s.timestamp,
+            )
+            for s in yt_data.snippets
+        ]
+
+        return YouTubeDocumentResponse(
+            id=doc.id,
+            filename=doc.filename,
+            file_type=doc.file_type,
+            file_size_bytes=doc.file_size_bytes,
+            total_pages=doc.total_pages,
+            total_chunks=doc.total_chunks,
+            created_at=doc.created_at,
+            video_id=yt_data.video_id,
+            url=yt_data.url,
+            title=yt_data.title,
+            author_name=yt_data.author_name,
+            thumbnail_url=yt_data.thumbnail_url,
+            snippets=snippets_resp,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Unexpected error ingesting YouTube video '{payload.url}': {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process and index YouTube video: {str(e)}",
+        )
+
+
 @router.get("", response_model=DocumentListResponse)
 async def list_documents(
     limit: int = 50,
@@ -151,6 +209,53 @@ async def get_document(
             detail="Document not found or access denied.",
         )
     return doc
+
+
+@router.get("/{document_id}/youtube", response_model=YouTubeDocumentResponse)
+async def get_youtube_document(
+    document_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Retrieve detailed metadata and all transcript snippets for an indexed YouTube video."""
+    details = await DocumentVectorStore.get_youtube_video_details(
+        db=db,
+        user_id=current_user.id,
+        document_id=document_id,
+    )
+    if not details:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="YouTube video document not found or access denied.",
+        )
+
+    doc = details["document"]
+    raw_snippets = details.get("snippets", [])
+    snippets_resp = [
+        YouTubeSnippetResponse(
+            text=s.get("text", ""),
+            start=float(s.get("start", 0.0)),
+            duration=float(s.get("duration", 0.0)),
+            timestamp=s.get("timestamp", "00:00"),
+        )
+        for s in raw_snippets
+    ]
+
+    return YouTubeDocumentResponse(
+        id=doc.id,
+        filename=doc.filename,
+        file_type=doc.file_type,
+        file_size_bytes=doc.file_size_bytes,
+        total_pages=doc.total_pages,
+        total_chunks=doc.total_chunks,
+        created_at=doc.created_at,
+        video_id=details.get("video_id", ""),
+        url=details.get("url", ""),
+        title=details.get("title", doc.filename),
+        author_name=details.get("author_name", "YouTube"),
+        thumbnail_url=details.get("thumbnail_url", ""),
+        snippets=snippets_resp,
+    )
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)

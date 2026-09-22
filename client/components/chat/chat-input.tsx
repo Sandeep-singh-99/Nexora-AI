@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Database,
+  Tv,
 } from "lucide-react"
 import {
   uploadDocumentApi,
@@ -76,7 +77,15 @@ export function ChatInput({
     }
   }, [input])
 
+  const isYouTubeInput = input.trim().startsWith("/youtube") || /youtube\.com|youtu\.be/.test(input)
+  const showSlashMenu = input.startsWith("/") && !input.includes(" ") && "/youtube".startsWith(input.toLowerCase())
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Tab" && showSlashMenu) {
+      e.preventDefault()
+      setInput("/youtube ")
+      return
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       if (input.trim() && !isLoading) {
@@ -264,6 +273,54 @@ export function ChatInput({
         </div>
       )}
 
+      {/* YouTube Video Detection Banner */}
+      {isYouTubeInput && !activeDocument && (
+        <div className="mb-2 flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl border border-red-500/30 bg-red-950/40 text-xs shadow-lg backdrop-blur-md animate-in fade-in slide-in-from-bottom-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-red-500/20 text-red-400 shrink-0">
+              <Tv className="h-3 w-3" />
+            </span>
+            <span className="text-white font-medium truncate">
+              YouTube Mode: Transcribes video into RAG & interactive timestamp player
+            </span>
+          </div>
+          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-red-300 bg-red-500/20 px-1.5 py-0.5 rounded border border-red-500/30 shrink-0">
+            /youtube
+          </span>
+        </div>
+      )}
+
+      {/* Slash Commands Dropdown Popover */}
+      {showSlashMenu && (
+        <div className="absolute bottom-[calc(100%+8px)] left-0 mb-1 w-80 rounded-xl border border-white/15 bg-[#0D131D]/95 p-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 z-40">
+          <div className="text-[10px] font-mono text-slate-400 px-2 py-1 flex items-center justify-between">
+            <span>Slash Commands</span>
+            <span className="text-[9px] bg-white/10 px-1 py-0.5 rounded text-slate-300">Tab to complete</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setInput("/youtube ")
+              textareaRef.current?.focus()
+            }}
+            className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-white/10 text-left transition-colors cursor-pointer group"
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-600/20 text-red-400 border border-red-500/30 shrink-0 group-hover:scale-105 transition-transform">
+              <Tv className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-white font-mono flex items-center gap-1.5">
+                <span>/youtube</span>
+                <span className="text-slate-400 font-normal font-sans text-[11px]">&lt;URL&gt;</span>
+              </p>
+              <p className="text-[10px] text-slate-400 truncate">
+                Transcribe video, index into RAG & play on click
+              </p>
+            </div>
+          </button>
+        </div>
+      )}
+
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -288,11 +345,13 @@ export function ChatInput({
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={
-            activeDocument
+            isYouTubeInput
+              ? "Paste a YouTube link (e.g. /youtube https://www.youtube.com/watch?v=...) to transcribe & analyze..."
+              : activeDocument
               ? `Ask anything about "${activeDocument.filename}" (AI answers only from this doc)...`
               : attachedFile?.status === "ready"
               ? `Ask questions about "${attachedFile.file.name}"...`
-              : "Ask Nexora anything or attach a PDF/DOCX... (Shift+Enter for newline)"
+              : "Ask Nexora anything, type /youtube <URL>, or attach PDF/DOCX... (Shift+Enter for newline)"
           }
           rows={1}
           className="min-h-[44px] max-h-[200px] border-none bg-transparent px-2 text-sm text-[#F5F7FA] placeholder:text-slate-500 focus-visible:ring-0"
@@ -314,6 +373,26 @@ export function ChatInput({
                 aria-label="Attach document"
               >
                 <Paperclip className="h-4 w-4" />
+              </button>
+            </Tooltip>
+
+            <Tooltip content="Transcribe YouTube Video (/youtube)">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!input.startsWith("/youtube")) {
+                    setInput("/youtube " + input.trim())
+                  }
+                  textareaRef.current?.focus()
+                }}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  isYouTubeInput
+                    ? "text-red-400 bg-red-500/15 border border-red-500/30"
+                    : "hover:text-white hover:bg-white/10 text-slate-400"
+                }`}
+                aria-label="YouTube Transcribe"
+              >
+                <Tv className="h-4 w-4" />
               </button>
             </Tooltip>
 

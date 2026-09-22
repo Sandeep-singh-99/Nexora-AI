@@ -12,6 +12,7 @@ from app.models.document import Document, DocumentChunk
 from app.ai.rag.loaders import load_document
 from app.ai.rag.chunking import chunk_document_items
 from app.ai.rag.embeddings import aget_embedding_vector, aget_batch_embedding_vectors
+from app.ai.rag.youtube_loader import fetch_youtube_video_data, YouTubeVideoData
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +120,120 @@ class DocumentVectorStore:
             f"for user {user_id} with {len(chunk_items)} chunks."
         )
         return doc_record
+
+    @staticmethod
+    async def ingest_youtube_video(
+        db: AsyncSession,
+        user_id: UUID,
+        url: str,
+    ) -> tuple[Document, YouTubeVideoData]:
+        """
+        Ingests a YouTube video transcript into pgvector:
+        1. Fetches metadata and timestamped transcript snippets via youtube_transcript_api & oEmbed.
+        2. Chunks transcript with start/end timestamps and URLs.
+        3. Generates 768-dim vector embeddings in batch.
+        4. Saves Document metadata (file_type='youtube') and DocumentChunk records.
+        """
+        try:
+            yt_data = await fetch_youtube_video_data(url)
+        except Exception as e:
+            logger.error(f"Failed to fetch YouTube video transcript for '{url}': {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
+
+        if not yt_data.chunks:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"No transcript chunks could be generated for YouTube video '{yt_data.title}'.",
+            )
+
+        doc_id = uuid.uuid4()
+        texts_to_embed = [c.content for c in yt_data.chunks]
+        embeddings = await aget_batch_embedding_vectors(texts_to_embed)
+
+        filename = f"YouTube: {yt_data.title}"
+        doc_record = Document(
+            id=doc_id,
+            user_id=user_id,
+            filename=filename[:250],
+            file_type="youtube",
+            file_size_bytes=len(yt_data.full_text.encode("utf-8")),
+            total_pages=1,
+            total_chunks=len(yt_data.chunks),
+        )
+        db.add(doc_record)
+
+        snippets_dict_list = [
+            {
+                "text": s.text,
+                "start": s.start,
+                "duration": s.duration,
+                "timestamp": s.timestamp,
+            }
+            for s in yt_data.snippets
+        ]
+
+        for idx, (chunk_item, emb) in enumerate(zip(yt_data.chunks, embeddings)):
+            chunk_meta = dict(chunk_item.metadata)
+            chunk_meta["document_id"] = str(doc_id)
+            chunk_meta["user_id"] = str(user_id)
+            if idx == 0:
+                chunk_meta["snippets"] = snippets_dict_list
+
+            chunk_record = DocumentChunk(
+                document_id=doc_id,
+                user_id=user_id,
+                content=chunk_item.content,
+                chunk_index=chunk_item.chunk_index,
+                page_number=1,
+                extra_metadata=chunk_meta,
+                embedding=emb,
+            )
+            db.add(chunk_record)
+
+        await db.commit()
+        await db.refresh(doc_record)
+
+        logger.info(
+            f"Successfully ingested YouTube video '{yt_data.title}' (ID: {doc_id}) "
+            f"for user {user_id} with {len(yt_data.chunks)} chunks."
+        )
+        return doc_record, yt_data
+
+    @staticmethod
+    async def get_youtube_video_details(
+        db: AsyncSession,
+        user_id: UUID,
+        document_id: UUID,
+    ) -> Optional[Dict[str, Any]]:
+        """Retrieves YouTube video metadata and transcript snippets for interactive playback."""
+        doc = await DocumentVectorStore.get_document_by_id(db, user_id, document_id)
+        if not doc or doc.file_type != "youtube":
+            return None
+
+        stmt = (
+            select(DocumentChunk)
+            .where(
+                DocumentChunk.document_id == document_id,
+                DocumentChunk.user_id == user_id,
+                DocumentChunk.chunk_index == 0,
+            )
+        )
+        res = await db.execute(stmt)
+        chunk = res.scalar_one_or_none()
+        meta = (chunk.extra_metadata or {}) if chunk else {}
+
+        return {
+            "document": doc,
+            "video_id": meta.get("video_id", ""),
+            "url": meta.get("url", ""),
+            "title": meta.get("title", doc.filename),
+            "author_name": meta.get("author_name", "YouTube"),
+            "thumbnail_url": meta.get("thumbnail_url", ""),
+            "snippets": meta.get("snippets", []),
+        }
 
     @staticmethod
     async def similarity_search(

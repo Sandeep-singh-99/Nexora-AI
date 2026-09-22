@@ -27,7 +27,7 @@ import {
   addMessageApi,
 } from "@/lib/api/chat"
 import { fetchPinsApi, pinMessageApi, unpinMessageByMessageIdApi } from "@/lib/api/pin"
-import { fetchDocumentsApi } from "@/lib/api/documents"
+import { fetchDocumentsApi, ingestYouTubeVideoApi, fetchYouTubeDocumentDetailsApi } from "@/lib/api/documents"
 import { PinItem } from "@/types/pin"
 
 
@@ -166,9 +166,18 @@ export default function ChatPage() {
         if (remoteConvs.length > 0) {
           const sessions = remoteConvs.map(mapApiToSession)
           setConversations(sessions)
-          const firstId = sessions[0].id
-          setActiveId(firstId)
-          loadConversationMessages(firstId)
+
+          // If a specific conversation ID was requested via query param (e.g. ?id=...), load it
+          const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null
+          const requestedId = urlParams?.get("id") || urlParams?.get("c")
+
+          if (requestedId && sessions.some((s) => s.id === requestedId)) {
+            setActiveId(requestedId)
+            loadConversationMessages(requestedId)
+          } else {
+            // Default: Always open a fresh new chat on /chat navigation
+            setActiveId("")
+          }
         } else {
           // If no conversations exist, set activeId to blank draft state
           setConversations([])
@@ -387,6 +396,133 @@ export default function ChatPage() {
     }
   }
 
+  // Ingest YouTube video and render interactive player
+  const handleYouTubeIngest = async (url: string, currentConvId: string, originalText: string) => {
+    // Cancel any previous stream
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+
+    const userMsg: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      role: "user",
+      content: originalText,
+      createdAt: new Date(),
+    }
+
+    const assistantMsgId = `msg-ai-${Date.now()}`
+    const initialAssistantMsg: ChatMessage = {
+      id: assistantMsgId,
+      role: "assistant",
+      content: "",
+      statusLabel: "Transcribing YouTube captions & indexing into pgvector RAG...",
+      createdAt: new Date(),
+    }
+
+    setMessagesMap((prev) => ({
+      ...prev,
+      [currentConvId]: [...(prev[currentConvId] || []), userMsg, initialAssistantMsg],
+    }))
+
+    setInput("")
+    setIsLoading(true)
+
+    addMessageApi(currentConvId, originalText, "user").catch((err) =>
+      console.error("Failed to persist user message:", err)
+    )
+
+    try {
+      const ytDoc = await ingestYouTubeVideoApi(url)
+
+      setActiveDocument(ytDoc)
+      setDocuments((prev) => {
+        if (prev.some((d) => d.id === ytDoc.id)) return prev
+        return [ytDoc, ...prev]
+      })
+
+      const finalContent = 
+`### 🎬 Transcribed & Indexed: **${ytDoc.title}**
+
+- **Channel / Creator**: ${ytDoc.author_name}
+- **Transcript Segments**: ${ytDoc.snippets?.length || 0}
+- **Vector Chunks**: ${ytDoc.total_chunks}
+- **RAG Scoped**: Questions will now be answered directly from this video.
+
+Click any line in the transcript above to seek the video player to that timestamp, or ask questions below to explore what the video is about!`
+
+      const finalMsg: ChatMessage = {
+        id: assistantMsgId,
+        role: "assistant",
+        content: finalContent,
+        statusLabel: undefined,
+        ui: {
+          type: "youtube_player",
+          props: {
+            videoId: ytDoc.video_id,
+            title: ytDoc.title,
+            authorName: ytDoc.author_name,
+            url: ytDoc.url,
+            thumbnailUrl: ytDoc.thumbnail_url,
+            snippets: ytDoc.snippets,
+          },
+        },
+        createdAt: new Date(),
+      }
+
+      setMessagesMap((prev) => ({
+        ...prev,
+        [currentConvId]: (prev[currentConvId] || []).map((m) => (m.id === assistantMsgId ? finalMsg : m)),
+      }))
+
+      await addMessageApi(currentConvId, finalContent, "assistant").catch((err) =>
+        console.error("Failed to persist assistant message:", err)
+      )
+
+      generateConversationTitleApi(currentConvId, originalText, ytDoc.filename, finalContent)
+        .then((updatedConv) => {
+          if (updatedConv && updatedConv.title) {
+            setConversations((prev) =>
+              prev.map((c) => (c.id === currentConvId ? { ...c, title: updatedConv.title } : c))
+            )
+          }
+        })
+        .catch((e) => console.debug("Auto title generation:", e))
+    } catch (err: any) {
+      console.error("YouTube ingestion failed:", err)
+      const errorDetail =
+        err.response?.data?.detail ||
+        err.message ||
+        "Could not retrieve video captions or transcripts."
+      const errorContent = `⚠️ **Could not process YouTube video:**\n\n${errorDetail}\n\n*Please ensure the video has captions/subtitles enabled, is publicly accessible, and the URL is formatted correctly.*`
+
+      setMessagesMap((prev) => ({
+        ...prev,
+        [currentConvId]: (prev[currentConvId] || []).map((m) =>
+          m.id === assistantMsgId
+            ? { ...m, content: errorContent, statusLabel: undefined }
+            : m
+        ),
+      }))
+
+      addMessageApi(currentConvId, errorContent, "assistant").catch((e) =>
+        console.error("Failed to persist error message:", e)
+      )
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Listen for quick questions clicked from YouTube Card or other UI components
+  useEffect(() => {
+    const handleAskRag = (e: any) => {
+      if (e.detail?.prompt) {
+        handleSubmitMessage(e.detail.prompt)
+      }
+    }
+    window.addEventListener("nexora:ask-rag", handleAskRag)
+    return () => window.removeEventListener("nexora:ask-rag", handleAskRag)
+  }, [activeId, activeDocument, isLoading])
+
   // Submit User Message
   const handleSubmitMessage = async (customPrompt?: string) => {
     const textToSend = customPrompt || input
@@ -408,6 +544,19 @@ export default function ChatPage() {
         currentConvId = session.id
       } catch (err) {
         console.error("Failed to create conversation on message submit:", err)
+        return
+      }
+    }
+
+    // Ingest YouTube video if /youtube command or YouTube URL detected
+    const isYouTubeCommand = textToSend.trim().startsWith("/youtube")
+    const ytUrlMatch = textToSend.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)[A-Za-z0-9_-]{11}/i)
+    const rawYtId = isYouTubeCommand && !ytUrlMatch ? textToSend.replace("/youtube", "").trim() : null
+
+    if (isYouTubeCommand || (ytUrlMatch && !activeDocument)) {
+      const targetUrl = ytUrlMatch ? ytUrlMatch[0] : rawYtId || ""
+      if (targetUrl) {
+        await handleYouTubeIngest(targetUrl, currentConvId, textToSend)
         return
       }
     }

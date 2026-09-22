@@ -42,3 +42,23 @@ class DocumentQueryResponse(BaseModel):
     answer: str
     is_grounded: bool = True
     sources: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class YouTubeIngestRequest(BaseModel):
+    url: str = Field(..., min_length=5, max_length=500, description="YouTube Video URL or Video ID")
+
+
+class YouTubeSnippetResponse(BaseModel):
+    text: str
+    start: float
+    duration: float
+    timestamp: str
+
+
+class YouTubeDocumentResponse(DocumentResponse):
+    video_id: str
+    url: str
+    title: str
+    author_name: str
+    thumbnail_url: str
+    snippets: List[YouTubeSnippetResponse] = Field(default_factory=list)

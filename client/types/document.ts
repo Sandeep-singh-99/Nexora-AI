@@ -30,3 +30,24 @@ export interface DocumentQueryResponse {
   is_grounded: boolean;
   sources: DocumentSourceItem[];
 }
+
+export interface YouTubeSnippet {
+  text: string;
+  start: number;
+  duration: number;
+  timestamp: string;
+}
+
+export interface YouTubeDocumentResponse extends UserDocument {
+  video_id: string;
+  url: string;
+  title: string;
+  author_name: string;
+  thumbnail_url: string;
+  snippets: YouTubeSnippet[];
+}
+
+export interface YouTubeIngestRequest {
+  url: string;
+}
+
