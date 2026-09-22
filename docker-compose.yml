@@ -1,20 +1,29 @@
 services:
   server:
-    build: ./server
+    build:
+      context: ./server
+      dockerfile: Dockerfile.dev
+
     container_name: nexora_server
+
     ports:
       - "8000:8000"
+
     volumes:
       - ./server:/app
       - /app/.venv
       - /app/__pycache__
+
     env_file:
       - ./server/.env
+
     environment:
       PYTHONPATH: /app
       PYTHONUNBUFFERED: "1"
       WATCHFILES_FORCE_POLLING: "true"
       WATCHFILES_POLL_INTERVAL: "0.5"
+
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app

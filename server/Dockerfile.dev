@@ -11,11 +11,11 @@ ENV PYTHONUNBUFFERED=1 \
 
 COPY pyproject.toml uv.lock ./
 
-RUN uv sync --locked --no-install-project --no-dev
+RUN uv sync --locked --no-install-project
 
 COPY . .
 
-RUN uv sync --locked --no-dev
+RUN uv sync --locked
 
 EXPOSE 8000
 
