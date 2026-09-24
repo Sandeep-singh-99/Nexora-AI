@@ -40,6 +40,7 @@ dependencies = [
     "pillow>=12.3.0",
     "pytesseract>=0.3.13",
     "youtube-transcript-api>=0.6.0",
+    "redis>=8.1.0",
 ]
 
 [tool.pytest.ini_options]
