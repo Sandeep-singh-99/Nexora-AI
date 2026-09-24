@@ -142,6 +142,16 @@ async def verify_csrf_protection(request: Request) -> None:
     Checks that X-CSRF-Token or X-XSRF-Token header matches csrf_token cookie.
     """
     if request.method in ["POST", "PUT", "PATCH", "DELETE"]:
+        path = request.url.path
+        exempt_paths = [
+            "/auth/login",
+            "/auth/register",
+            "/auth/forgot-password",
+            "/auth/reset-password",
+        ]
+        if any(path.endswith(p) for p in exempt_paths):
+            return
+
         client_type = get_client_type(request)
         if client_type == "web" and "access_token" in request.cookies:
             csrf_cookie = request.cookies.get("csrf_token")

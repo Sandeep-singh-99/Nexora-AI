@@ -1,6 +1,7 @@
 import json
 import logging
 import asyncio
+import uuid
 from urllib.parse import urlparse
 from uuid import UUID
 from typing import Optional
@@ -11,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from langchain_core.messages import HumanMessage
 from app.core.database import get_db, AsyncSessionLocal
+from app.core.rate_limit import rate_limit_ai
 from app.dependencies.auth import get_optional_current_user
 from app.models.auth import User
 from app.models.chat_memory import Conversation
@@ -408,7 +410,7 @@ async def get_langsmith_status():
     return check_langsmith_connection()
 
 
-@router.post("/chat/stream")
+@router.post("/chat/stream", dependencies=[Depends(rate_limit_ai)])
 async def chat_stream(
     request_data: ChatRequest,
     request: Request,
@@ -417,7 +419,7 @@ async def chat_stream(
     """SSE Streaming Endpoint supporting Cancellation, Guardrails, Tavily Search, Thinking, and Tokens."""
     try:
         validate_input(request_data.message)
-        thread_id = request_data.thread_id or "default_session"
+        thread_id = request_data.thread_id or f"session_{uuid.uuid4()}"
         user_id = str(current_user.id) if current_user else "anonymous"
 
         return StreamingResponse(
@@ -448,7 +450,7 @@ async def chat_stream(
         )
 
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/chat", response_model=ChatResponse, dependencies=[Depends(rate_limit_ai)])
 async def chat(
     request: ChatRequest,
     current_user: Optional[User] = Depends(get_optional_current_user),
@@ -457,7 +459,7 @@ async def chat(
     try:
         validate_input(request.message)
 
-        thread_id = request.thread_id or "default_session"
+        thread_id = request.thread_id or f"session_{uuid.uuid4()}"
         user_id = str(current_user.id) if current_user else "anonymous"
         configurable_dict = {
             "thread_id": thread_id,

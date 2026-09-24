@@ -22,6 +22,12 @@ class InMemorySlidingWindowRateLimiter:
         now = time.time()
         cutoff = now - self.window_seconds
         async with self._lock:
+            # Periodic sweep if map grows large to prevent memory leak
+            if len(self.requests) > 1000:
+                stale_keys = [k for k, q in self.requests.items() if not q or q[-1] < cutoff]
+                for k in stale_keys:
+                    self.requests.pop(k, None)
+
             user_requests = self.requests[key]
             while user_requests and user_requests[0] < cutoff:
                 user_requests.popleft()
@@ -95,19 +101,29 @@ email_rate_limiter = RedisSlidingWindowRateLimiter(requests_per_window=5, window
 ai_rate_limiter = RedisSlidingWindowRateLimiter(requests_per_window=30, window_seconds=60)
 
 
+def get_client_ip(request: Request) -> str:
+    """Extract client IP respecting X-Forwarded-For if behind a reverse proxy/load balancer."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        client_ip = forwarded.split(",")[0].strip()
+        if client_ip:
+            return client_ip
+    return request.client.host if request.client else "127.0.0.1"
+
+
 async def rate_limit_auth(request: Request) -> None:
-    client_ip = request.client.host if request.client else "127.0.0.1"
+    client_ip = get_client_ip(request)
     key = f"auth:{client_ip}"
     await auth_rate_limiter.check(key)
 
 
 async def rate_limit_email(request: Request) -> None:
-    client_ip = request.client.host if request.client else "127.0.0.1"
+    client_ip = get_client_ip(request)
     key = f"email:{client_ip}"
     await email_rate_limiter.check(key)
 
 
 async def rate_limit_ai(request: Request) -> None:
-    client_ip = request.client.host if request.client else "127.0.0.1"
+    client_ip = get_client_ip(request)
     key = f"ai:{client_ip}"
     await ai_rate_limiter.check(key)

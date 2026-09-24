@@ -238,6 +238,16 @@ class AuthService:
         user = result.scalar_one_or_none()
 
         if user:
+            # Invalidate any previously requested, unused reset tokens for this user
+            await db.execute(
+                update(PasswordResetToken)
+                .where(
+                    PasswordResetToken.user_id == user.id,
+                    PasswordResetToken.used_at.is_(None),
+                )
+                .values(used_at=utc_now())
+            )
+
             raw_token = generate_secure_token()
             token_h = hash_token(raw_token)
             expires_at = utc_now() + timedelta(minutes=settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES)

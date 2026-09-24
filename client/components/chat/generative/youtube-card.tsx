@@ -41,8 +41,24 @@ export function YouTubeCard({
   const [searchFilter, setSearchFilter] = useState<string>("")
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
-
-  const youtubeWatchUrl = url || `https://www.youtube.com/watch?v=${videoId}`
+  const safeWatchUrl = React.useMemo(() => {
+    if (url) {
+      try {
+        const parsed = new URL(url)
+        if (
+          parsed.protocol === "https:" &&
+          (parsed.hostname === "www.youtube.com" ||
+            parsed.hostname === "youtube.com" ||
+            parsed.hostname === "youtu.be")
+        ) {
+          return url
+        }
+      } catch {
+        // Fallback below
+      }
+    }
+    return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`
+  }, [url, videoId])
 
   // Function to seek video to timestamp and play
   const seekToTimestamp = (seconds: number) => {
@@ -129,7 +145,7 @@ export function YouTubeCard({
         </div>
 
         <a
-          href={youtubeWatchUrl}
+          href={safeWatchUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-slate-300 hover:text-white border border-white/10 transition-colors shrink-0 ml-2"

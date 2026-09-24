@@ -18,6 +18,7 @@ from app.schemas.chat import (
 )
 from app.services.chat_service import ChatService
 from app.ai.title_generator import generate_chatgpt_title
+from app.core.rate_limit import rate_limit_ai
 from app.core.redis_cache import get_cache, set_cache, invalidate_chat_cache
 
 router = APIRouter(prefix="", tags=["Chat Storage"])
@@ -73,9 +74,10 @@ async def generate_and_update_conversation_title(
     return conversation
 
 
-@router.post("/generate-title", response_model=TitleGenerateResponse)
+@router.post("/generate-title", response_model=TitleGenerateResponse, dependencies=[Depends(rate_limit_ai)])
 async def generate_title_preview(
     payload: TitleGenerateRequest,
+    current_user: User = Depends(get_current_user),
 ):
     """Generate a ChatGPT-style title preview."""
     title = await generate_chatgpt_title(
@@ -236,7 +238,12 @@ async def add_message(
 ):
     """Append a message to a conversation thread."""
     # Ensure conversation exists & is owned
-    await ChatService.get_conversation(db, conversation_id, current_user.id, load_messages=False)
+    conversation = await ChatService.get_conversation(db, conversation_id, current_user.id, load_messages=False)
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found or access denied.",
+        )
     
     message = await ChatService.add_message(
         db=db,
