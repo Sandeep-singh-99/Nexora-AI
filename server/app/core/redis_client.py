@@ -1,5 +1,6 @@
 import redis
 from dotenv import load_dotenv
+from redis.asyncio import Redis
 from app.core.config import settings
 import os
 
@@ -19,5 +20,5 @@ except redis.exceptions.ConnectionError:
     raise Exception("Redis server is not reachable")
 
 
-async def get_redis_client():
+async def get_redis_client() -> Redis:
     return redis_client

@@ -50,7 +50,6 @@ class TokenResponse(BaseModel):
 class UserResponse(BaseModel):
     id: UUID
     email: EmailStr
-    is_verified: bool
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

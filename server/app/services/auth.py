@@ -54,7 +54,6 @@ class AuthService:
         new_user = User(
             email=register_data.email,
             hashed_password=hashed,
-            is_verified=True,
             is_active=True,
         )
         db.add(new_user)

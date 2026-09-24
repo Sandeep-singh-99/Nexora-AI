@@ -31,7 +31,6 @@ export interface TokenResponse {
 export interface UserResponse {
   id: string;
   email: string;
-  is_verified: boolean;
   created_at: string;
 }
 
