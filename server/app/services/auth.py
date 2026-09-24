@@ -187,9 +187,27 @@ class AuthService:
     async def logout(
         db: AsyncSession,
         raw_refresh_token: Optional[str] = None,
+        raw_access_token: Optional[str] = None,
         user_id: Optional[UUID] = None,
     ) -> None:
-        """Revoke session upon user logout."""
+        """Revoke refresh session and blacklist active access token upon logout."""
+        # 1. Blacklist access token in Redis
+        if raw_access_token:
+            try:
+                from app.core.redis_client import get_redis_client
+                access_payload = decode_token(raw_access_token, expected_type="access")
+                access_jti = access_payload.get("jti")
+                exp = access_payload.get("exp")
+                if access_jti and exp:
+                    now_ts = datetime.now(timezone.utc).timestamp()
+                    ttl = int(exp - now_ts)
+                    if ttl > 0:
+                        redis = await get_redis_client()
+                        await redis.set(f"blacklist:jti:{access_jti}", "1", ex=ttl)
+            except Exception:
+                pass  # Ignore invalid/expired tokens during logout
+
+        # 2. Revoke refresh session in database
         if raw_refresh_token:
             try:
                 payload = decode_token(raw_refresh_token, expected_type="refresh")

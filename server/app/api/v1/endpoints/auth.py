@@ -199,7 +199,19 @@ async def logout(
     else:
         raw_refresh_token = request.cookies.get("refresh_token")
 
-    await AuthService.logout(db, raw_refresh_token=raw_refresh_token)
+    # Extract access token from Authorization header or cookie for immediate blacklisting
+    raw_access_token: Optional[str] = None
+    auth_header = request.headers.get("authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        raw_access_token = auth_header.split(" ")[1]
+    elif request.cookies.get("access_token"):
+        raw_access_token = request.cookies.get("access_token")
+
+    await AuthService.logout(
+        db,
+        raw_refresh_token=raw_refresh_token,
+        raw_access_token=raw_access_token,
+    )
 
     clear_auth_cookies(response)
     return MessageResponse(message="Logged out successfully.")

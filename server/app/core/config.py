@@ -54,13 +54,11 @@ class Settings:
         or os.getenv("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
     )
 
-    REDIS_HOST: str = os.getenv("REDIS_HOST", " ")
-
-    REDIS_PORT: str = os.getenv("REDIS_PORT", " ")
-
-    REDIS_USER: str = os.getenv("REDIS_USER", " ")
-
-    REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD", " ")
+    REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost").strip()
+    REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379").strip() or 6379)
+    REDIS_USER: str = os.getenv("REDIS_USER", "").strip()
+    REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD", "").strip()
+    REDIS_SSL: bool = os.getenv("REDIS_SSL", "false").lower() == "true"
 
     # Frontend
     FRONTEND_URL: str = os.getenv(

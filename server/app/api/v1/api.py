@@ -6,10 +6,12 @@ from app.api.v1.endpoints import (
     memory,
     pin,
     documents,
+    health,
 )
 
 app_router = APIRouter()
 
+app_router.include_router(health.router, tags=["Health"])
 app_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app_router.include_router(ai.router, prefix="/ai", tags=["AI"])
 app_router.include_router(chat.router, prefix="/chat", tags=["Chat Storage"])

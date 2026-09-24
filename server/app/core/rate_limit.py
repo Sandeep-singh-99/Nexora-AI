@@ -1,14 +1,18 @@
 import asyncio
+import logging
 import time
 from collections import defaultdict, deque
 from typing import Dict, Deque
 from fastapi import HTTPException, Request, status
+from app.core.redis_client import get_redis_client
+
+logger = logging.getLogger(__name__)
 
 
-class SlidingWindowRateLimiter:
-    """In-memory sliding window rate limiter."""
+class InMemorySlidingWindowRateLimiter:
+    """In-memory sliding window fallback rate limiter."""
 
-    def __init__(self, requests_per_window: int = 5, window_seconds: int = 60):
+    def __init__(self, requests_per_window: int = 10, window_seconds: int = 60):
         self.requests_per_window = requests_per_window
         self.window_seconds = window_seconds
         self.requests: Dict[str, Deque[float]] = defaultdict(deque)
@@ -33,9 +37,62 @@ class SlidingWindowRateLimiter:
             user_requests.append(now)
 
 
-# Instantiated rate limiters for auth operations
-auth_rate_limiter = SlidingWindowRateLimiter(requests_per_window=10, window_seconds=60)
-email_rate_limiter = SlidingWindowRateLimiter(requests_per_window=3, window_seconds=60)
+class RedisSlidingWindowRateLimiter:
+    """
+    Distributed sliding window rate limiter backed by Redis Sorted Sets (ZSET).
+    Automatically falls back to in-memory limiter if Redis is unavailable.
+    """
+
+    def __init__(self, requests_per_window: int = 10, window_seconds: int = 60):
+        self.requests_per_window = requests_per_window
+        self.window_seconds = window_seconds
+        self.fallback = InMemorySlidingWindowRateLimiter(
+            requests_per_window=requests_per_window,
+            window_seconds=window_seconds,
+        )
+
+    async def check(self, key: str) -> None:
+        now = time.time()
+        cutoff = now - self.window_seconds
+        redis_key = f"ratelimit:{key}"
+
+        try:
+            redis = await get_redis_client()
+            async with redis.pipeline(transaction=True) as pipe:
+                pipe.zremrangebyscore(redis_key, 0, cutoff)
+                pipe.zadd(redis_key, {str(now): now})
+                pipe.zcard(redis_key)
+                pipe.expire(redis_key, self.window_seconds + 5)
+                results = await pipe.execute()
+
+            current_count = results[2]
+
+            if current_count > self.requests_per_window:
+                # Find oldest entry to compute precise retry_after
+                oldest_entries = await redis.zrange(redis_key, 0, 0, withscores=True)
+                if oldest_entries:
+                    oldest_ts = oldest_entries[0][1]
+                    retry_after = max(1, int(oldest_ts + self.window_seconds - now))
+                else:
+                    retry_after = self.window_seconds
+
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=f"Too many requests. Please try again in {retry_after} seconds.",
+                    headers={"Retry-After": str(retry_after)},
+                )
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.warning(f"Redis rate limiter encountered error ({e}); using in-memory fallback.")
+            await self.fallback.check(key)
+
+
+# Global rate limiter instances
+auth_rate_limiter = RedisSlidingWindowRateLimiter(requests_per_window=10, window_seconds=60)
+email_rate_limiter = RedisSlidingWindowRateLimiter(requests_per_window=5, window_seconds=60)
+ai_rate_limiter = RedisSlidingWindowRateLimiter(requests_per_window=30, window_seconds=60)
 
 
 async def rate_limit_auth(request: Request) -> None:
@@ -48,3 +105,9 @@ async def rate_limit_email(request: Request) -> None:
     client_ip = request.client.host if request.client else "127.0.0.1"
     key = f"email:{client_ip}"
     await email_rate_limiter.check(key)
+
+
+async def rate_limit_ai(request: Request) -> None:
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    key = f"ai:{client_ip}"
+    await ai_rate_limiter.check(key)

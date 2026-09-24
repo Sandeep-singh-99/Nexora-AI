@@ -18,6 +18,7 @@ from app.schemas.chat import (
 )
 from app.services.chat_service import ChatService
 from app.ai.title_generator import generate_chatgpt_title
+from app.core.redis_cache import get_cache, set_cache, invalidate_chat_cache
 
 router = APIRouter(prefix="", tags=["Chat Storage"])
 
@@ -43,6 +44,8 @@ async def create_conversation(
         user_id=current_user.id,
         title=title,
     )
+    # Invalidate conversation list cache for this user
+    await invalidate_chat_cache(user_id=current_user.id)
     return conversation
 
 
@@ -65,6 +68,8 @@ async def generate_and_update_conversation_title(
         user_id=current_user.id,
         title=title,
     )
+    # Invalidate caches for this conversation
+    await invalidate_chat_cache(conversation_id=conversation_id, user_id=current_user.id)
     return conversation
 
 
@@ -88,14 +93,24 @@ async def list_conversations(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List all chat conversations for current user."""
+    """List all chat conversations for current user with Redis caching."""
+    cache_key = f"cache:user_convs:{current_user.id}:{limit}:{offset}"
+    cached = await get_cache(cache_key)
+    if cached is not None:
+        try:
+            return ConversationListResponse.model_validate(cached)
+        except Exception:
+            pass
+
     conversations = await ChatService.get_user_conversations(
         db=db,
         user_id=current_user.id,
         limit=limit,
         offset=offset,
     )
-    return ConversationListResponse(conversations=conversations)
+    response_data = ConversationListResponse(conversations=conversations)
+    await set_cache(cache_key, response_data.model_dump(mode="json"), expire_seconds=300)
+    return response_data
 
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationResponse)
@@ -104,7 +119,15 @@ async def get_conversation(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Fetch details of a specific conversation with all messages."""
+    """Fetch details of a specific conversation with all messages (Redis cached to reduce DB calls)."""
+    cache_key = f"cache:conversation:{conversation_id}:{current_user.id}"
+    cached = await get_cache(cache_key)
+    if cached is not None:
+        try:
+            return ConversationResponse.model_validate(cached)
+        except Exception:
+            pass
+
     conversation = await ChatService.get_conversation(
         db=db,
         conversation_id=conversation_id,
@@ -113,7 +136,10 @@ async def get_conversation(
     )
     if not conversation:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
-    return conversation
+
+    response_data = ConversationResponse.model_validate(conversation)
+    await set_cache(cache_key, response_data.model_dump(mode="json"), expire_seconds=600)
+    return response_data
 
 
 @router.patch("/conversations/{conversation_id}", response_model=ConversationResponse)
@@ -132,6 +158,8 @@ async def update_conversation(
         is_pinned=payload.is_pinned,
         is_archived=payload.is_archived,
     )
+    # Invalidate cache
+    await invalidate_chat_cache(conversation_id=conversation_id, user_id=current_user.id)
     return conversation
 
 
@@ -147,6 +175,8 @@ async def delete_conversation(
         conversation_id=conversation_id,
         user_id=current_user.id,
     )
+    # Invalidate cache
+    await invalidate_chat_cache(conversation_id=conversation_id, user_id=current_user.id)
     return None
 
 
@@ -160,6 +190,8 @@ async def delete_all_conversations(
         db=db,
         user_id=current_user.id,
     )
+    # Invalidate all user chat caches
+    await invalidate_chat_cache(user_id=current_user.id)
     return {"message": f"Successfully deleted {count} conversations", "count": count}
 
 
@@ -170,14 +202,28 @@ async def get_messages(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Fetch all messages for a specific conversation."""
+    """Fetch all messages for a specific conversation with Redis caching."""
+    cache_key = f"cache:messages:{conversation_id}:{current_user.id}:{limit}"
+    cached = await get_cache(cache_key)
+    if cached is not None:
+        try:
+            return [MessageResponse.model_validate(m) for m in cached]
+        except Exception:
+            pass
+
     messages = await ChatService.get_messages(
         db=db,
         conversation_id=conversation_id,
         user_id=current_user.id,
         limit=limit,
     )
-    return messages
+    response_data = [MessageResponse.model_validate(m) for m in messages]
+    await set_cache(
+        cache_key,
+        [m.model_dump(mode="json") for m in response_data],
+        expire_seconds=600,
+    )
+    return response_data
 
 
 @router.post("/conversations/{conversation_id}/messages", response_model=MessageResponse)
@@ -198,4 +244,6 @@ async def add_message(
         role=role,
         content=payload.content,
     )
+    # Invalidate caches so next GET returns new message immediately
+    await invalidate_chat_cache(conversation_id=conversation_id, user_id=current_user.id)
     return message

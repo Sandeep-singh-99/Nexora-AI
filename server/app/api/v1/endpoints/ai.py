@@ -556,6 +556,11 @@ async def delete_ai_chat_conversation(
                 conversation_id=parsed_uuid,
                 user_id=current_user.id,
             )
+            try:
+                from app.core.redis_cache import invalidate_chat_cache
+                await invalidate_chat_cache(conversation_id=parsed_uuid, user_id=current_user.id)
+            except Exception:
+                pass
         elif current_user and target_id not in getattr(memory, "storage", {}):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

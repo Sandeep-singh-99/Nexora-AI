@@ -5,13 +5,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.api import app_router
 from app.core.config import settings
 from app.core.database import init_db
+from app.core.redis_client import init_redis, close_redis
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Perform startup database initialization
+    # Perform startup database and Redis initialization
     await init_db()
+    await init_redis()
     yield
+    # Clean shutdown
+    await close_redis()
 
 
 app = FastAPI(

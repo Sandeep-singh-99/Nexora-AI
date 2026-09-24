@@ -56,12 +56,29 @@ async def get_current_user(
     try:
         payload = decode_token(token, expected_type="access")
         user_id = UUID(payload["sub"])
+        jti = payload.get("jti")
     except (jwt.PyJWTError, KeyError, ValueError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Check if access token was revoked / blacklisted via Redis
+    if jti:
+        try:
+            from app.core.redis_client import get_redis_client
+            redis = await get_redis_client()
+            if await redis.get(f"blacklist:jti:{jti}"):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Authentication token has been revoked",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            pass  # Fall open if Redis is temporarily unreachable
 
     stmt = select(User).where(User.id == user_id)
     result = await db.execute(stmt)
