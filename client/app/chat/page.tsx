@@ -397,7 +397,12 @@ export default function ChatPage() {
   }
 
   // Ingest YouTube video and render interactive player
-  const handleYouTubeIngest = async (url: string, currentConvId: string, originalText: string) => {
+  const handleYouTubeIngest = async (
+    url: string,
+    currentConvId: string,
+    originalText: string,
+    isNewConversation: boolean = false
+  ) => {
     // Cancel any previous stream
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
@@ -478,15 +483,17 @@ Click any line in the transcript above to seek the video player to that timestam
         console.error("Failed to persist assistant message:", err)
       )
 
-      generateConversationTitleApi(currentConvId, originalText, ytDoc.filename, finalContent)
-        .then((updatedConv) => {
-          if (updatedConv && updatedConv.title) {
-            setConversations((prev) =>
-              prev.map((c) => (c.id === currentConvId ? { ...c, title: updatedConv.title } : c))
-            )
-          }
-        })
-        .catch((e) => console.debug("Auto title generation:", e))
+      if (isNewConversation) {
+        generateConversationTitleApi(currentConvId, originalText, ytDoc.filename, finalContent)
+          .then((updatedConv) => {
+            if (updatedConv && updatedConv.title) {
+              setConversations((prev) =>
+                prev.map((c) => (c.id === currentConvId ? { ...c, title: updatedConv.title } : c))
+              )
+            }
+          })
+          .catch((e) => console.debug("Auto title generation:", e))
+      }
     } catch (err: any) {
       console.error("YouTube ingestion failed:", err)
       const errorDetail =
@@ -528,6 +535,7 @@ Click any line in the transcript above to seek the video player to that timestam
     const textToSend = customPrompt || input
     if (!textToSend.trim() || isLoading) return
 
+    const isNewConversation = !activeId
     let currentConvId = activeId
 
     // If draft mode (no active conversation), create conversation in DB now
@@ -556,7 +564,7 @@ Click any line in the transcript above to seek the video player to that timestam
     if (isYouTubeCommand || (ytUrlMatch && !activeDocument)) {
       const targetUrl = ytUrlMatch ? ytUrlMatch[0] : rawYtId || ""
       if (targetUrl) {
-        await handleYouTubeIngest(targetUrl, currentConvId, textToSend)
+        await handleYouTubeIngest(targetUrl, currentConvId, textToSend, isNewConversation)
         return
       }
     }
@@ -691,21 +699,27 @@ Click any line in the transcript above to seek the video player to that timestam
           console.error("Failed to persist assistant message:", err)
         )
 
-        // Refine ChatGPT-style title asynchronously
-        generateConversationTitleApi(
-          currentConvId,
-          textToSend,
-          activeDocument?.filename,
-          finalAssistantText
-        )
-          .then((updatedConv) => {
-            if (updatedConv && updatedConv.title) {
-              setConversations((prev) =>
-                prev.map((c) => (c.id === currentConvId ? { ...c, title: updatedConv.title } : c))
-              )
-            }
-          })
-          .catch((e) => console.error("Failed to refine conversation title:", e))
+        // Only generate/refine title if this is the first exchange of a brand new conversation
+        // and it hasn't established a title yet (i.e. is still "New Chat")
+        if (isNewConversation) {
+          const currentConv = conversations.find((c) => c.id === currentConvId)
+          if (!currentConv || currentConv.title === "New Chat") {
+            generateConversationTitleApi(
+              currentConvId,
+              textToSend,
+              activeDocument?.filename,
+              finalAssistantText
+            )
+              .then((updatedConv) => {
+                if (updatedConv && updatedConv.title) {
+                  setConversations((prev) =>
+                    prev.map((c) => (c.id === currentConvId ? { ...c, title: updatedConv.title } : c))
+                  )
+                }
+              })
+              .catch((e) => console.error("Failed to refine conversation title:", e))
+          }
+        }
       }
 
       // Re-sync conversation list from backend so titles & timestamps update

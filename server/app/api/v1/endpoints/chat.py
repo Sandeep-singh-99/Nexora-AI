@@ -57,7 +57,20 @@ async def generate_and_update_conversation_title(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Generate a ChatGPT-style title using AI and update the stored conversation."""
+    """Generate a ChatGPT-style title using AI and update the stored conversation if not already titled."""
+    conversation = await ChatService.get_conversation(
+        db=db,
+        conversation_id=conversation_id,
+        user_id=current_user.id,
+        load_messages=False,
+    )
+    if not conversation:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+
+    # If the conversation already has an established title (i.e. not "New Chat"), do not rewrite it
+    if conversation.title and conversation.title.strip() != "New Chat":
+        return conversation
+
     title = await generate_chatgpt_title(
         message=payload.message,
         document_name=payload.document_name,

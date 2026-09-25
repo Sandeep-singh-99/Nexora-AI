@@ -16,7 +16,7 @@ from app.services.memory_service import MemoryService
 router = APIRouter(prefix="", tags=["Long-Term Memory"])
 
 
-@router.get("/memory", response_model=UserMemoryListResponse)
+@router.get("", response_model=UserMemoryListResponse)
 async def list_memories(
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
@@ -31,7 +31,7 @@ async def list_memories(
     return UserMemoryListResponse(memories=memories)
 
 
-@router.post("/memory", response_model=UserMemoryResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=UserMemoryResponse, status_code=status.HTTP_201_CREATED)
 async def add_memory(
     payload: UserMemoryCreate,
     db: AsyncSession = Depends(get_db),
@@ -47,7 +47,7 @@ async def add_memory(
     return memory
 
 
-@router.get("/memory/search", response_model=List[UserMemoryResponse])
+@router.get("/search", response_model=List[UserMemoryResponse])
 async def search_memories(
     q: str = Query(..., min_length=1, description="Query text to search vector similarity against memories"),
     limit: int = 5,
@@ -64,7 +64,7 @@ async def search_memories(
     return memories
 
 
-@router.delete("/memory/{memory_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{memory_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_memory(
     memory_id: UUID,
     db: AsyncSession = Depends(get_db),
