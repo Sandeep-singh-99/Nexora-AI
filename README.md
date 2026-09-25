@@ -8,11 +8,12 @@
 [![LangGraph](https://img.shields.io/badge/LangGraph-1.2.11-FF6F00?style=flat&logo=langchain)](https://github.com/langchain-ai/langgraph)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat&logo=python)](https://www.python.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-336791?style=flat&logo=postgresql)](https://github.com/pgvector/pgvector)
+[![Redis](https://img.shields.io/badge/Redis-Cache%20%26%20Rate%20Limit-DC382D?style=flat&logo=redis&logoColor=white)](https://redis.io/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=flat&logo=tailwind-css)](https://tailwindcss.com/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Nexora is an enterprise-grade artificial intelligence platform powered by **LangGraph**, **FastAPI**, **Next.js 16**, and **PostgreSQL with pgvector**. It unites autonomous multi-agent intent routing, real-time Server-Sent Events (SSE) streaming, zero-disk in-memory Document RAG, interactive YouTube Video RAG with click-to-seek playback, hybrid symbolic mathematics with SymPy, dual-stage security guardrails, ChatGPT-style automatic conversation titling, pinned messages, dynamic Generative UI, and end-to-end observability via LangSmith.
+Nexora is an enterprise-grade artificial intelligence platform powered by **LangGraph**, **FastAPI**, **Next.js 16**, **PostgreSQL with pgvector**, and **Redis**. It unites autonomous multi-agent intent routing, real-time Server-Sent Events (SSE) streaming, zero-disk in-memory Document RAG, interactive YouTube Video RAG with click-to-seek playback, hybrid symbolic mathematics with SymPy, distributed sliding-window rate limiting, double-submit cookie CSRF defense, Redis search and conversation caching, dual-stage security guardrails, ChatGPT-style automatic conversation titling, pinned messages, dynamic Generative UI, deep health telemetry, and end-to-end observability via LangSmith.
 
 ---
 
@@ -24,6 +25,15 @@ Nexora is an enterprise-grade artificial intelligence platform powered by **Lang
   - [1. Private In-Memory Document RAG (Zero Disk Storage)](#1-private-in-memory-document-rag-zero-disk-storage)
   - [2. Interactive YouTube Video RAG with Click-to-Seek](#2-interactive-youtube-video-rag-with-click-to-seek)
 - [Security Middleware & Guardrails Architecture](#-security-middleware--guardrails-architecture)
+  - [1. Distributed Sliding-Window Rate Limiting](#1-distributed-sliding-window-rate-limiting)
+  - [2. Double-Submit Cookie CSRF Protection](#2-double-submit-cookie-csrf-protection)
+  - [3. Session Revocation & Token Blacklisting](#3-session-revocation--token-blacklisting)
+  - [4. Hardened Security Headers & IDOR Prevention](#4-hardened-security-headers--idor-prevention)
+  - [5. Pre- and Post-Execution Guardrails](#5-pre--and-post-execution-guardrails)
+- [High-Performance Redis Caching & System Health](#-high-performance-redis-caching--system-health)
+  - [1. Tavily Search Result Caching](#1-tavily-search-result-caching)
+  - [2. Chat & Message History Caching](#2-chat--message-history-caching)
+  - [3. Deep Health Check & Latency Probing](#3-deep-health-check--latency-probing)
 - [Key Features](#-key-features)
 - [Dynamic Generative UI Registry](#-dynamic-generative-ui-registry)
 - [Technology Stack](#-technology-stack)
@@ -43,7 +53,7 @@ Nexora is an enterprise-grade artificial intelligence platform powered by **Lang
 
 ## 🏛️ Architectural Overview
 
-Nexora is built as a unified, high-throughput monorepo decoupling an ultra-responsive **Next.js 16** frontend (with Tailwind CSS v4 and Motion) from an asynchronous **FastAPI** backend and a stateful **LangGraph** orchestration graph.
+Nexora is built as a unified, high-throughput monorepo decoupling an ultra-responsive **Next.js 16** frontend (with Tailwind CSS v4 and Motion) from an asynchronous **FastAPI** backend, a stateful **LangGraph** orchestration graph, a distributed **Redis** caching & rate-limiting tier, and **PostgreSQL with pgvector**.
 
 ```mermaid
 flowchart TD
@@ -51,12 +61,16 @@ flowchart TD
         UI["Modern Web Interface\nTailwind CSS v4 & Motion"]
         GenUI["Dynamic Generative UI\nYouTube Player, Math, Clocks, Charts & Tables"]
         ChatHook["SSE Streaming Engine\nAbort & Disconnect Control"]
+        AxiosClient["Axios API Client\nCSRF Token Header & 401 Auto-Refresh"]
     end
 
-    subgraph Gateway ["API & Application Gateway"]
+    subgraph Gateway ["API & Application Gateway (FastAPI)"]
         FastAPI["FastAPI Asynchronous Gateway\nUvicorn / Python 3.11"]
-        AuthMid["Security & Auth Middleware\nArgon2id & HTTP-only JWT"]
+        SecHeaders["Security Headers Middleware\nX-Frame-Options, CSP, HSTS, nosniff"]
+        RateLimitMid["Sliding-Window Rate Limiter\nRedis ZSET (In-Memory Fallback)"]
         CSRFMid["Double-Submit Cookie CSRF\nx-csrf-token validation"]
+        AuthMid["Security & Auth Middleware\nArgon2id, HTTP-only JWT & Redis Token Blacklist"]
+        HealthEndpoint["/api/v1/health Probe\nDB & Redis Latency Check"]
     end
 
     subgraph AI_Engine ["LangGraph Multi-Agent Engine"]
@@ -68,9 +82,10 @@ flowchart TD
         OutGuard["Output Sanitization Guardrail\nSecret Masking & Leak Prevention"]
     end
 
-    subgraph Data_RAG ["Data & Knowledge Layer"]
+    subgraph Data_RAG ["Data, Caching & Knowledge Layer"]
         Postgres[("PostgreSQL Database\nSQLAlchemy 2.0 Async")]
         PGVector[("pgvector Extension\n768-dim Semantic Vector Store")]
+        RedisCache[("Redis 8.1 / 7+\nSearch Cache, Chat Cache & Blacklist")]
         DocIngest["In-Memory Document Parser\nPDF, DOCX, Scanned OCR Fallback"]
         YTIngest["YouTube Video Ingester\nyoutube-transcript-api & oEmbed"]
         MemorySaver["LangGraph Checkpointer\nThread State Persistence"]
@@ -85,8 +100,12 @@ flowchart TD
     end
 
     UI --> ChatHook
+    UI --> AxiosClient
     ChatHook <-->|HTTP / SSE Stream| FastAPI
-    FastAPI --> CSRFMid
+    AxiosClient <-->|REST API| FastAPI
+    FastAPI --> SecHeaders
+    SecHeaders --> RateLimitMid
+    RateLimitMid --> CSRFMid
     CSRFMid --> AuthMid
     AuthMid --> InGuard
     InGuard --> Router
@@ -98,6 +117,13 @@ flowchart TD
     MathAgent --> OutGuard
     OutGuard --> FastAPI
     
+    RateLimitMid <--> RedisCache
+    AuthMid <--> RedisCache
+    FastAPI <--> HealthEndpoint
+    HealthEndpoint -.-> Postgres
+    HealthEndpoint -.-> RedisCache
+
+    ChatAgent <--> RedisCache
     ChatAgent <--> Tavily
     Router & ChatAgent & CodingAgent & MathAgent <--> Groq
     ChatAgent <--> Gemini
@@ -108,6 +134,7 @@ flowchart TD
     DocIngest --> HF --> PGVector
     YTIngest --> HF --> PGVector
     FastAPI <--> Postgres
+    FastAPI <--> RedisCache
     GenUI <--> UI
 ```
 
@@ -141,12 +168,15 @@ stateDiagram-v2
 
     state "General Chat Agent" as ChatAgentNode {
         [*] --> CheckTools
-        CheckTools --> TavilySearch: Need Live Web Facts?
+        CheckTools --> CheckRedisCache: Check Cached Search Query
+        CheckRedisCache --> TavilySearch: Cache Miss -> Live Search
+        CheckRedisCache --> SynthesizeChat: Cache Hit -> Return Cached Results
         CheckTools --> TimeTool: Current Time / Timezone Request?
         CheckTools --> DocRAGTool: Document Scoped Query?
         CheckTools --> YouTubeRAGTool: YouTube Video Scoped Query?
         CheckTools --> DirectChat: Conversational / Reasoning
-        TavilySearch --> SynthesizeChat
+        TavilySearch --> CacheResult: Store in Redis (1h TTL)
+        CacheResult --> SynthesizeChat
         TimeTool --> SynthesizeChat
         DocRAGTool --> SynthesizeChat
         YouTubeRAGTool --> SynthesizeChat
@@ -235,8 +265,9 @@ flowchart LR
 - **One-Command Video Ingestion**: Simply trigger `/youtube <url>` in chat or use the Documents modal.
 - **Automatic Transcript & Metadata Ingestion**: Uses `youtube-transcript-api` to pull full timestamped video captions and retrieves title, author, and high-res thumbnails via oEmbed.
 - **Time-Window Chunking**: Groups adjacent transcript captions into cohesive semantic chunks with exact `start_time` and `end_time` bounds and formatted timestamp strings (`mm:ss` / `hh:mm:ss`).
+- **Conditional Auto-Titling**: Ingesting a YouTube video into a brand new or untitled conversation automatically triggers AI title generation derived from the video title and prompt context.
 - **Interactive `YouTubeCard` Generative UI**: Emits an interactive video player widget with:
-  - Synchronized embedded YouTube player.
+  - Synchronized embedded YouTube player with regex-safe URL and ID parsing.
   - Interactive transcript panel with clickable timestamps that immediately seek playback to the exact moment.
   - Keyword search filter across video captions.
   - "Ask about this part" action buttons to ask targeted questions about specific video segments.
@@ -245,15 +276,20 @@ flowchart LR
 
 ## 🛡️ Security Middleware & Guardrails Architecture
 
-Nexora enforces a defense-in-depth security model across HTTP transport, agent graph execution, and document vectorization.
+Nexora enforces a defense-in-depth security model across HTTP transport, agent graph execution, document vectorization, and token lifecycles.
 
 ```mermaid
 flowchart TD
     subgraph Client_Transport ["1. Transport & Gateway Security"]
         Req["User Request\n(Web or Mobile)"]
+        SecHead["Security Headers Applied\nX-Content-Type-Options, X-Frame-Options, HSTS"]
+        RateLimit{"Rate Limiter Check\n(Redis ZSET Sliding Window)"}
+        RateLimitExceeded["HTTP 429 Too Many Requests\nRetry-After Header"]
         ClientType{"Detect Client Type\n(Header vs Cookie)"}
         CSRF["CSRF Verification Middleware\nDouble-Submit Cookie (x-csrf-token)"]
         AuthVal["JWT Authentication Middleware\nDecode Access Token / Argon2id Session"]
+        BlacklistCheck{"Token Blacklisted in Redis?\n(blacklist:jti:<id>)"}
+        RevokedError["HTTP 401 Unauthorized\nToken Revoked"]
     end
 
     subgraph Input_Defense ["2. LangGraph Input Guardrails (Pre-Execution)"]
@@ -283,11 +319,16 @@ flowchart TD
         DBStore[("Vector Store\npgvector")]
     end
 
-    Req --> ClientType
+    Req --> SecHead
+    SecHead --> RateLimit
+    RateLimit -->|Exceeded| RateLimitExceeded
+    RateLimit -->|Allowed| ClientType
     ClientType -->|Web Client| CSRF
     ClientType -->|Mobile Client| AuthVal
     CSRF --> AuthVal
-    AuthVal --> InNode
+    AuthVal --> BlacklistCheck
+    BlacklistCheck -->|Blacklisted| RevokedError
+    BlacklistCheck -->|Valid| InNode
 
     InNode --> TokenCheck
     TokenCheck -->|Pass| InjectCheck
@@ -313,17 +354,68 @@ flowchart TD
     MemScan -->|No Findings| DBStore
 ```
 
-1. **Pre-Execution Input Guardrails (`input_filter.py`, `abuse_filter.py`)**: Rejects prompts exceeding 12,000 characters, blocks jailbreaks (e.g. DAN, roleplay bypasses), filters profanity, and prevents prompt injection without consuming LLM inference tokens.
-2. **Post-Execution Output Guardrails (`output_filter.py`)**: Redacts secrets and credentials (`[REDACTED_SECRET]`) including Groq, OpenAI, Google Gemini, GitHub, and AWS keys, private RSA keys, and database connection strings. Prevents disclosure of internal system prompts.
-3. **Document Ingestion Guardrails (`document_guardrails.py`)**: Scans document text in-memory for Credit Cards (Luhn algorithm), SSNs, API keys, and passwords before chunks are embedded into pgvector.
-4. **Transport & Authentication (`auth.py`)**: Handles web clients via secure HTTP-only cookies and mobile/API clients via `Authorization: Bearer <token>` headers. Enforces double-submit cookie CSRF validation on mutating HTTP methods.
-5. **Tool Resilience & Exponential Backoff (`tool_error.py`)**: Protects external tool calls (Tavily search, math execution, RAG retrievals) with automatic retries (up to 3 attempts, exponential backoff) and graceful error fallbacks.
+### 1. Distributed Sliding-Window Rate Limiting
+- **Redis ZSET Sliding Window**: Implemented in `rate_limit.py`, user requests are tracked inside atomic Redis sorted sets by timestamp, calculating exact sliding windows rather than naive fixed buckets.
+- **Tiered Endpoint Protection**:
+  - `rate_limit_auth`: **10 requests / 60 seconds** on `/auth/login` and `/auth/register`.
+  - `rate_limit_email`: **5 requests / 60 seconds** on `/auth/forgot-password`.
+  - `rate_limit_ai`: **30 requests / 60 seconds** on `/ai/chat/stream`, `/ai/chat`, and title generation.
+- **Reverse-Proxy Aware**: Accurately resolves client IP addresses through the `X-Forwarded-For` header.
+- **Resilient Fallback**: Automatically degrades to a synchronized `InMemorySlidingWindowRateLimiter` with auto-sweeping to prevent memory leaks if Redis connectivity drops.
+- **HTTP 429 & Retry-After**: Emits standard `429 Too Many Requests` responses with dynamic `Retry-After` headers indicating quota reset seconds.
+
+### 2. Double-Submit Cookie CSRF Protection
+- **Double-Submit Pattern**: Web clients sending state-changing requests (`POST`, `PUT`, `PATCH`, `DELETE`) with session cookies must present a matching `x-csrf-token` or `x-xsrf-token` header verified against the `csrf_token` cookie.
+- **Safe Route Exemptions**: Public entrypoints (`/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/reset-password`) are strictly whitelisted.
+- **Client Synchronization**: Next.js client utilities (`axios.ts`, `ai.ts`) read the `csrf_token` cookie via `getCookie()` and transparently attach it to REST calls and SSE streaming connections.
+- **Silent 401 Re-Authentication**: If an access token expires during an SSE stream, the client automatically requests `/auth/refresh` and seamlessly re-attempts the stream without interrupting the user.
+
+### 3. Session Revocation & Token Blacklisting
+- **Instant Logout Invalidation**: When a user logs out (`/api/v1/auth/logout`), the access token's unique `jti` is stored in Redis (`blacklist:jti:<jti>`) with a TTL matching its expiration time.
+- **Zero Stale Windows**: Subsequent requests bearing that token are rejected immediately with `401 Unauthorized`, neutralizing replay attacks even before the JWT natively expires.
+- **Database Refresh Revocation**: The corresponding refresh session in PostgreSQL is marked revoked.
+
+### 4. Hardened Security Headers & IDOR Prevention
+- **Defensive HTTP Headers**: FastAPI middleware injects `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Strict-Transport-Security` in production.
+- **Next.js Security Headers**: Configured in `next.config.ts` with strict frame and permissions policies (`camera=(), microphone=(), geolocation=()`).
+- **IDOR Defense**: All chat message appending (`POST /conversations/{id}/messages`), message fetching, conversation updates, and deletions enforce strict database-level user ownership verification.
+
+### 5. Pre- and Post-Execution Guardrails
+- **Pre-Execution Input Guardrails (`input_filter.py`, `abuse_filter.py`)**: Rejects prompts exceeding 12,000 characters, blocks jailbreaks (e.g. DAN, roleplay bypasses), filters profanity, and prevents prompt injection without consuming LLM inference tokens.
+- **Post-Execution Output Guardrails (`output_filter.py`)**: Redacts secrets and credentials (`[REDACTED_SECRET]`) including Groq, OpenAI, Google Gemini, GitHub, and AWS keys, private RSA keys, and database connection strings. Prevents disclosure of internal system prompts.
+- **Document Ingestion Guardrails (`document_guardrails.py`)**: Scans document text in-memory for Credit Cards (Luhn algorithm), SSNs, API keys, and passwords before chunks are embedded into pgvector.
+
+---
+
+## ⚡ High-Performance Redis Caching & System Health
+
+Nexora integrates an asynchronous Redis 8.1 / 7+ layer (`redis_client.py`, `redis_cache.py`) designed for high-concurrency throughput, reduced database load, and robust failure isolation.
+
+### 1. Tavily Search Result Caching
+- **Deterministic SHA256 Hashing**: Web search queries are normalized and hashed (`cache:tavily:<sha256>`).
+- **1-Hour TTL**: Repeated or identical agent queries across sessions return cached search citations instantly, preserving Tavily API quota and reducing latency by up to 90%.
+- **Automatic Fallback**: If Redis is offline, searches execute transparently via live HTTP calls.
+
+### 2. Chat & Message History Caching
+- **User Conversation Lists**: Cached under `cache:user_convs:<user_id>:<limit>:<offset>` with a 5-minute TTL.
+- **Conversation Metadata**: Cached under `cache:conversation:<conv_id>:<user_id>` with a 10-minute TTL.
+- **Message Histories**: Cached under `cache:messages:<conv_id>:<user_id>:<limit>` with a 10-minute TTL.
+- **Intelligent Invalidation**: Any mutating operation (adding a message, updating a title, pinning, or deleting a thread) invokes `invalidate_chat_cache` to instantly purge stale user and conversation keys.
+
+### 3. Deep Health Check & Latency Probing
+- **`/api/v1/health` Endpoint**: A dedicated health check endpoint provides live operational telemetry:
+  - **PostgreSQL**: Executes a lightweight `SELECT 1` query to verify database connection pool viability.
+  - **Redis**: Sends an asynchronous `ping()` and measures round-trip latency in milliseconds (`redis_latency_ms`).
+  - **Status Classification**: Returns `{"status": "healthy", ...}` with HTTP 200, or `{"status": "degraded", ...}` with HTTP 503 if any dependency is unreachable.
 
 ---
 
 ## ✨ Key Features
 
 - 🤖 **Autonomous Multi-Agent Routing**: Automatically classifies queries to dispatch to specialized Chat, Coding, or Math agents without requiring manual prompt prefixes.
+- ⚡ **High-Performance Redis Caching**: Caches Tavily web search results and conversation histories with intelligent multi-key invalidation.
+- 🚦 **Sliding-Window Rate Limiting**: Distributed Redis ZSET sliding-window rate limiting protects auth, email, and AI endpoints with graceful in-memory fallbacks.
+- 🛡️ **Hardened CSRF & Session Security**: Double-submit cookie CSRF validation on all state-changing endpoints and Redis-backed JWT token revocation on logout.
 - 📺 **Interactive YouTube Video RAG**: Ingest any YouTube video using `/youtube <URL>`, extract timestamped transcripts, and interact using an embedded player with clickable timestamp seeking and caption filtering.
 - 📄 **Private In-Memory Document RAG**: Zero permanent disk storage; processes PDFs and Word documents in memory with optional OCR fallback and strict document focus scoping.
 - 🧮 **Hybrid Symbolic Math Engine**: Evaluates complex calculus (derivatives, integrals, limits), algebra, and matrices via SymPy and SciPy, generating KaTeX-formatted step-by-step solutions.
@@ -332,6 +424,7 @@ flowchart TD
 - 🌐 **Real-Time Web Search Grounding**: Live search integration via Tavily provides up-to-date facts, current events, and source citations with domain attribution.
 - 🛡️ **Dual-Layer Guardrails & HITL**: Pre- and post-execution security guardrails filter prompt injections and redact production secrets, complemented by Human-in-the-Loop sensitive data confirmation.
 - 📊 **Dynamic Generative UI**: The assistant emits typed UI payloads over SSE to render rich, interactive widgets inline.
+- 🏥 **Deep Health Telemetry**: Live `/health` endpoint monitors database and Redis responsiveness with sub-millisecond precision.
 - 🔭 **End-to-End Observability**: Native integration with LangSmith for comprehensive tracing of agent nodes, tool invocations, token streams, and latency metrics.
 
 ---
@@ -363,13 +456,14 @@ Nexora's backend emits structured `ui` events over the SSE stream that the Next.
 | **Backend API** | [FastAPI 0.141.1](https://fastapi.tiangolo.com/), [Uvicorn 0.52.4](https://www.uvicorn.org/), [Python 3.11](https://www.python.org/) |
 | **Agent Orchestration** | [LangGraph 1.2.11](https://github.com/langchain-ai/langgraph), [LangChain Core 1.6.2](https://github.com/langchain-ai/langchain) |
 | **LLM & Inference** | [Groq](https://groq.com/) (Llama-3 via `langchain-groq`), [Google Gemini](https://ai.google.dev/) (`langchain-google-genai`) |
-| **Web Search** | [Tavily Search API](https://tavily.com/) (`langchain-tavily 0.2.18`) |
+| **Web Search & Caching** | [Tavily Search API](https://tavily.com/) (`langchain-tavily 0.2.18`) with [Redis 8.1.0](https://redis.io/) TTL cache |
+| **Caching & Rate Limiting** | [Redis](https://redis.io/) (`redis>=8.1.0`), Redis ZSET Sliding-Window Rate Limiter & Token Blacklisting |
 | **Media & Transcripts** | [youtube-transcript-api 0.6.0](https://pypi.org/project/youtube-transcript-api/) |
 | **Document Processing & OCR** | `pypdf 6.19.0`, `python-docx 1.2.0`, `pytesseract 0.3.13`, `Pillow 12.3.0` |
 | **Math & Symbolic Engine** | [SymPy 1.13.0](https://www.sympy.org/), [SciPy 1.12.0](https://scipy.org/), [NumPy](https://numpy.org/) |
 | **Database & Vector Store** | [PostgreSQL](https://www.postgresql.org/) with [pgvector 0.5.0](https://github.com/pgvector/pgvector), [SQLAlchemy 2.0.52 Async](https://www.sqlalchemy.org/), [Alembic 1.19.2](https://alembic.sqlalchemy.org/) |
 | **Vector Embeddings** | `sentence-transformers 6.0.1`, `langchain-huggingface 1.2.2` (768-dimensional embeddings) |
-| **Security & Cryptography** | `argon2-cffi 23.1.0`, `pyjwt 2.8.0` |
+| **Security & Cryptography** | `argon2-cffi 23.1.0`, `pyjwt 2.8.0`, Double-Submit CSRF, Secure HTTP-only Cookies |
 | **Observability** | [LangSmith](https://smith.langchain.com/) (`langsmith 0.1.0`) |
 | **Package & Dev Tooling** | [`uv`](https://github.com/astral-sh/uv), [`pnpm 11.21.0`](https://pnpm.io/), [Docker](https://www.docker.com/) & Docker Compose |
 
@@ -402,6 +496,9 @@ Nexora/
 │   │   └── ui/                           # Base UI primitives
 │   ├── hooks/                            # Custom hooks (SSE streaming, auth, responsive layout)
 │   ├── lib/                              # API clients, constants, and utilities
+│   │   ├── api/                          # Axios instance, CSRF injection, and SSE stream reader
+│   │   └── utils.ts
+│   ├── next.config.ts                    # Next.js config with hardened security headers & permissions
 │   └── package.json
 │
 ├── server/                               # FastAPI Asynchronous Backend & Agentic AI
@@ -417,25 +514,49 @@ Nexora/
 │   │   │   │   ├── youtube_loader.py     # YouTube transcript extractor & chunking pipeline
 │   │   │   │   ├── chunking.py           # Recursive semantic text chunker
 │   │   │   │   └── vector_store.py       # pgvector similarity search & persistence
-│   │   │   ├── tool/                     # SymPy math tool, Tavily search tool, world time tool
+│   │   │   ├── tool/                     # SymPy math tool, Tavily search tool (Redis cached), world time tool
 │   │   │   ├── title_generator.py        # ChatGPT-style dynamic thread title generator
 │   │   │   └── graph.py                  # Master LangGraph StateGraph compilation
 │   │   ├── api/v1/                       # REST Endpoints
 │   │   │   ├── endpoints/
-│   │   │   │   ├── auth.py               # Authentication, registration, & user sessions
-│   │   │   │   ├── ai.py                 # Real-time SSE streaming endpoint
-│   │   │   │   ├── chat.py               # Conversation threads, auto-titling, & message history
+│   │   │   │   ├── health.py             # Database & Redis connectivity and latency probe
+│   │   │   │   ├── auth.py               # Authentication, registration, logout & CSRF handling
+│   │   │   │   ├── ai.py                 # Real-time SSE streaming & chat execution endpoints
+│   │   │   │   ├── chat.py               # Conversation threads, message histories & Redis caching
 │   │   │   │   ├── pin.py                # Pinned message management
-│   │   │   │   ├── documents.py          # Document upload & YouTube video ingestion
+│   │   │   │   ├── documents.py          # Document upload, query & YouTube video ingestion
 │   │   │   │   └── memory.py             # Long-term user memories & semantic search
 │   │   │   └── api.py                    # API v1 router registry
-│   │   ├── core/                         # Configuration settings, security constants, & database engine
-│   │   ├── models/                       # SQLAlchemy ORM models (User, Chat, Pin, Document, Memory)
+│   │   ├── core/                         # Configuration settings, Redis client, caching & rate limiting
+│   │   │   ├── config.py                 # Pydantic environment configuration
+│   │   │   ├── database.py               # Async SQLAlchemy engine & session factory
+│   │   │   ├── redis_client.py           # Async Redis connection pool & ping health
+│   │   │   ├── redis_cache.py            # Redis JSON caching & invalidation helpers
+│   │   │   ├── rate_limit.py             # Sliding-window rate limiting (Redis ZSET + Memory Fallback)
+│   │   │   └── security.py               # Argon2 password hashing & JWT token encoding/decoding
+│   │   ├── dependencies/                 # FastAPI dependency injection (Auth, CSRF verification)
+│   │   ├── models/                       # SQLAlchemy ORM models (User, Chat, Message, Pin, Document, Memory)
 │   │   ├── schemas/                      # Pydantic data validation schemas
 │   │   ├── services/                     # Business logic and database operations
-│   │   └── main.py                       # FastAPI application entrypoint & middleware
-│   ├── tests/                            # Pytest automated test suite
-│   ├── Dockerfile                        # Production multi-stage Dockerfile
+│   │   └── main.py                       # FastAPI application entrypoint, security headers & middleware
+│   ├── tests/                            # Automated Pytest suite (70 unit & integration tests)
+│   │   ├── test_auth.py                  # User authentication and token validation tests
+│   │   ├── test_chat_delete.py           # Conversation deletion and cascade tests
+│   │   ├── test_chat_memory.py           # Thread state and memory checkpointer tests
+│   │   ├── test_document_guardrails.py   # Document PII scanner and card validation tests
+│   │   ├── test_guardrails.py            # Prompt injection and secret redaction tests
+│   │   ├── test_langsmith.py             # LangSmith tracing status tests
+│   │   ├── test_math_tool.py             # SymPy calculus, algebra, and LaTeX formatting tests
+│   │   ├── test_rag_agent.py             # RAG retrieval and context injection tests
+│   │   ├── test_rag_chunking.py          # Semantic text splitters tests
+│   │   ├── test_rag_endpoints.py         # Document upload, query, and deletion API tests
+│   │   ├── test_rag_isolation.py         # Multi-tenant vector store isolation tests
+│   │   ├── test_rag_loaders.py           # In-memory PDF, DOCX, and OCR loader tests
+│   │   ├── test_rag_tool.py              # Scoped document search tool tests
+│   │   ├── test_redis.py                 # Redis connection, caching, and rate limiting tests
+│   │   ├── test_security_fixes.py        # CSRF enforcement, IDOR prevention, and blacklist tests
+│   │   └── test_youtube_ingest.py        # YouTube transcript extraction and chunking tests
+│   ├── Dockerfile                        # Production multi-stage Dockerfile (non-root appuser)
 │   ├── Dockerfile.dev                    # Fast development Dockerfile with hot reloading
 │   └── pyproject.toml
 │
@@ -454,6 +575,7 @@ Ensure you have the following tools installed:
 - [Node.js](https://nodejs.org/) (v20+ recommended) and [pnpm](https://pnpm.io/) (`>= 10`)
 - [Python 3.11](https://www.python.org/) and [`uv`](https://github.com/astral-sh/uv)
 - [PostgreSQL](https://www.postgresql.org/) with the `pgvector` extension installed
+- [Redis](https://redis.io/) (v7+ or v8+) running locally or via cloud
 - [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) (optional, for scanned document OCR)
 
 ---
@@ -472,11 +594,24 @@ FRONTEND_URL=http://localhost:3000
 # PostgreSQL with pgvector
 DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/nexora_db
 
+# Redis Caching & Rate Limiting
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_USER=
+REDIS_PASSWORD=
+REDIS_SSL=false
+
 # Security & Authentication
-JWT_SECRET_KEY=your_super_secret_jwt_key_here
+JWT_SECRET_KEY=your_super_secret_jwt_key_here_minimum_32_characters
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=7
+PASSWORD_RESET_TOKEN_EXPIRE_MINUTES=30
+
+# Cookie Configuration
+COOKIE_SECURE=false
+COOKIE_DOMAIN=
+COOKIE_SAMESITE=lax
 
 # LLM Providers
 GROQ_API_KEY=gsk_...
@@ -575,28 +710,39 @@ Nexora exposes a clean, modular REST interface versioned under `/api/v1`:
 
 | Endpoint | Method | Tag | Description |
 | :--- | :---: | :--- | :--- |
-| `/api/v1/auth/register` | `POST` | Authentication | Register a new user account |
-| `/api/v1/auth/login` | `POST` | Authentication | Authenticate user and issue secure HTTP-only cookies |
+| `/api/v1/health` | `GET` | Health | Deep health check probing PostgreSQL & Redis latency with status |
+| `/api/v1/auth/register` | `POST` | Authentication | Register a new user account (rate-limited) |
+| `/api/v1/auth/login` | `POST` | Authentication | Authenticate user, issue HTTP-only cookies and CSRF token (rate-limited) |
 | `/api/v1/auth/refresh` | `POST` | Authentication | Rotate refresh token and issue new access token |
-| `/api/v1/auth/logout` | `POST` | Authentication | Revoke session and clear authentication cookies |
+| `/api/v1/auth/logout` | `POST` | Authentication | Revoke session, blacklist access token in Redis, and clear cookies |
 | `/api/v1/auth/me` | `GET` | Authentication | Retrieve profile of currently authenticated user |
-| `/api/v1/ai/stream` | `POST` | AI Execution | **SSE Stream**: Execute query across LangGraph multi-agent network |
-| `/api/v1/chat/conversations` | `GET` | Chat Storage | List all conversations for authenticated user |
+| `/api/v1/auth/forgot-password` | `POST` | Authentication | Generate secure password reset token (rate-limited) |
+| `/api/v1/auth/reset-password` | `POST` | Authentication | Reset account password using token |
+| `/api/v1/ai/chat/stream` | `POST` | AI Execution | **SSE Stream**: Execute query across LangGraph multi-agent network (rate-limited) |
+| `/api/v1/ai/chat` | `POST` | AI Execution | Synchronous non-streaming query execution (rate-limited) |
+| `/api/v1/ai/chat/conversation/{id}` | `DELETE` | AI Execution | Clear thread LangGraph checkpointer memory state |
+| `/api/v1/ai/langsmith/status` | `GET` | AI Execution | Check active LangSmith telemetry and tracing status |
+| `/api/v1/chat/conversations` | `GET` | Chat Storage | List all conversations for authenticated user (Redis cached) |
 | `/api/v1/chat/conversations` | `POST` | Chat Storage | Create conversation with automatic ChatGPT-style title generation |
-| `/api/v1/chat/conversations/{id}` | `GET` | Chat Storage | Fetch conversation details along with full message history |
+| `/api/v1/chat/conversations/{id}` | `GET` | Chat Storage | Fetch conversation details along with full message history (Redis cached) |
 | `/api/v1/chat/conversations/{id}` | `PATCH` | Chat Storage | Update conversation title, pinned status, or archive state |
-| `/api/v1/chat/conversations/{id}` | `DELETE` | Chat Storage | Delete a specific conversation thread |
-| `/api/v1/chat/conversations` | `DELETE` | Chat Storage | Delete all conversations for current user |
-| `/api/v1/chat/conversations/{id}/generate-title` | `POST` | Chat Storage | Generate dynamic AI title and update the conversation |
+| `/api/v1/chat/conversations/{id}` | `DELETE` | Chat Storage | Delete a specific conversation thread and invalidate cache |
+| `/api/v1/chat/conversations` | `DELETE` | Chat Storage | Delete all conversations for current user and invalidate caches |
+| `/api/v1/chat/conversations/{id}/generate-title` | `POST` | Chat Storage | Conditionally generate ChatGPT-style AI title for untitled chats |
+| `/api/v1/chat/generate-title` | `POST` | Chat Storage | Generate standalone dynamic AI title from prompt (rate-limited) |
+| `/api/v1/chat/conversations/{id}/messages` | `GET` | Chat Storage | Fetch all messages for a specific conversation (Redis cached) |
+| `/api/v1/chat/conversations/{id}/messages` | `POST` | Chat Storage | Append user or assistant message to conversation thread |
 | `/api/v1/pins` | `POST` | Pinned Messages | Pin an important message within a conversation |
 | `/api/v1/pins` | `GET` | Pinned Messages | List user's pinned messages (optionally filter by `conversation_id`) |
 | `/api/v1/pins/{pin_id}` | `DELETE` | Pinned Messages | Unpin / delete a pinned message |
+| `/api/v1/pins/message/{message_id}` | `DELETE` | Pinned Messages | Unpin a message by its message ID |
 | `/api/v1/documents/upload` | `POST` | Documents & RAG | Ingest in-memory PDF or DOCX file with PII detection |
 | `/api/v1/documents/youtube` | `POST` | Documents & RAG | Ingest YouTube video transcript & metadata into pgvector |
 | `/api/v1/documents` | `GET` | Documents & RAG | List all ingested documents and videos owned by user |
 | `/api/v1/documents/{id}` | `GET` | Documents & RAG | Retrieve metadata for an ingested document or video |
 | `/api/v1/documents/{id}/youtube`| `GET` | Documents & RAG | Fetch detailed transcript snippets and timestamps for a video |
 | `/api/v1/documents/{id}` | `DELETE` | Documents & RAG | Delete document or video and purge vector embeddings |
+| `/api/v1/documents/query` | `POST` | Documents & RAG | Scoped semantic similarity query across document chunks |
 | `/api/v1/memory` | `GET` | Long-Term Memory | List stored long-term facts and user preferences |
 | `/api/v1/memory` | `POST` | Long-Term Memory | Manually store a persistent fact or preference |
 | `/api/v1/memory/search` | `GET` | Long-Term Memory | Semantic vector search across user memories |
@@ -604,7 +750,7 @@ Nexora exposes a clean, modular REST interface versioned under `/api/v1`:
 
 ### SSE Streaming Events Protocol
 
-The `/api/v1/ai/stream` endpoint streams real-time Server-Sent Events with structured JSON payloads:
+The `/api/v1/ai/chat/stream` endpoint streams real-time Server-Sent Events with structured JSON payloads:
 
 - **`status`**: Agent node progress updates (e.g. `{"step": "Evaluating safety policies..."}`, `{"step": "Routing to Math Agent..."}`).
 - **`search`**: Metadata for live web searches or document vector queries (e.g. query terms and retrieved domain sources).
@@ -622,7 +768,7 @@ The `/api/v1/ai/stream` endpoint streams real-time Server-Sent Events with struc
 
 ## 🧪 Testing
 
-The backend includes a comprehensive suite of automated tests covering guardrails, isolation, YouTube ingestion, and the symbolic math engine:
+The backend includes a comprehensive suite of **70 automated unit and integration tests** covering guardrails, isolation, Redis caching, rate limiting, security fixes, YouTube ingestion, and the symbolic math engine:
 
 ```bash
 cd server
@@ -632,6 +778,12 @@ uv run pytest
 ### Targeted Test Suites
 
 ```bash
+# Test Redis connection, JSON caching, sliding-window rate limiting, and fallback
+uv run pytest tests/test_redis.py
+
+# Test CSRF protection, IDOR prevention on message endpoints, and token blacklisting
+uv run pytest tests/test_security_fixes.py
+
 # Test YouTube video transcript ingestion and chunking
 uv run pytest tests/test_youtube_ingest.py
 
@@ -652,10 +804,15 @@ uv run pytest tests/test_auth.py
 
 # Test conversation storage, auto-titling, and memory retrieval
 uv run pytest tests/test_chat_memory.py
+
+# Test conversation deletion cascade and cache invalidation
+uv run pytest tests/test_chat_delete.py
+
+# Test RAG document endpoints (upload, query, delete)
+uv run pytest tests/test_rag_endpoints.py
+
+# Test LangSmith telemetry and status reporting
+uv run pytest tests/test_langsmith.py
 ```
 
 ---
-
-## 📄 License
-
-This project is licensed under the terms of the [MIT License](LICENSE).
