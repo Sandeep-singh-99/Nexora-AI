@@ -1,4 +1,4 @@
-import { api } from "./axios";
+import { api, getCookie } from "./axios";
 import { GenerativeUIResponse } from "@/types/chat";
 
 export interface ChatRequest {
@@ -59,14 +59,41 @@ export async function sendStreamingChatMessageApi(
   signal?: AbortSignal
 ): Promise<void> {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-  const response = await fetch(`${baseUrl}/ai/chat/stream`, {
+
+  const getHeaders = () => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    const csrfToken = getCookie("csrf_token");
+    if (csrfToken) {
+      headers["X-CSRF-Token"] = csrfToken;
+    }
+    return headers;
+  };
+
+  let response = await fetch(`${baseUrl}/ai/chat/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getHeaders(),
     credentials: "include",
     body: JSON.stringify(payload),
     signal,
   });
 
+  // If token expired (401), attempt refreshing tokens once and retry
+  if (response.status === 401) {
+    try {
+      await api.post("/auth/refresh");
+      response = await fetch(`${baseUrl}/ai/chat/stream`, {
+        method: "POST",
+        headers: getHeaders(),
+        credentials: "include",
+        body: JSON.stringify(payload),
+        signal,
+      });
+    } catch {
+      // Refresh failed; proceed with original response handling
+    }
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
