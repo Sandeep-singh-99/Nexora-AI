@@ -615,10 +615,10 @@ COOKIE_SAMESITE=lax
 
 # LLM Providers
 GROQ_API_KEY=gsk_...
-GROQ_MODEL=llama3-70b-8192
+GROQ_MODEL=openai/gpt-oss-120b
 
 GOOGLE_API_KEY=AIzaSy...
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=gemini-2.5-flash
 
 # Embeddings & Web Search
 HUGGINGFACE_API_KEY=hf_...

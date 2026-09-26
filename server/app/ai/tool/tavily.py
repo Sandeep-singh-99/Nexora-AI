@@ -3,7 +3,6 @@ import json
 import logging
 from langchain_tavily import TavilySearch
 from app.core.config import settings
-from app.ai.middleware.tool_error import custom_tool_error_handler
 from app.core.redis_cache import get_cache, set_cache
 
 logger = logging.getLogger(__name__)
@@ -33,10 +32,9 @@ class CachedTavilySearch(TavilySearch):
 
 def tavily_search() -> TavilySearch:
     """Configures Tavily web search tool with caching and error handling."""
-    tool = CachedTavilySearch(
+    return CachedTavilySearch(
         max_results=3,
         topic="general",
         tavily_api_key=settings.TAVILY_SEARCH,
+        handle_tool_error=True,
     )
-    tool.handle_tool_error = custom_tool_error_handler
-    return tool

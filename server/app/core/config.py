@@ -1,6 +1,6 @@
 import os
 from typing import Optional
-
+from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -29,11 +29,11 @@ class Settings:
         os.getenv("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", "30")
     )
 
-    GEMINI_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
-    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "")
+    GEMINI_API_KEY: str = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
-    GROQ_MODEL: str = os.getenv("GROQ_MODEL")
+    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
     HUGGINGFACE_API_KEY: str = os.getenv("HUGGINGFACE_API_KEY", "")
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "")
