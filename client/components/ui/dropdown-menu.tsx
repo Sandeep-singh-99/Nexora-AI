@@ -29,24 +29,41 @@ export function DropdownMenuTrigger({
   className,
   onClick,
   title,
+  asChild,
 }: {
   children: React.ReactNode
   className?: string
   onClick?: (e: React.MouseEvent) => void
   title?: string
+  asChild?: boolean
 }) {
   const context = React.useContext(DropdownMenuContext)
   if (!context) throw new Error("DropdownMenuTrigger must be used within DropdownMenu")
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onClick?.(e)
+    context.setOpen((prev) => !prev)
+  }
+
+  if (asChild && React.isValidElement(children)) {
+    const childProps = children.props as any
+    return React.cloneElement(children as React.ReactElement<any>, {
+      ref: context.triggerRef,
+      title: title || childProps?.title,
+      onClick: (e: React.MouseEvent) => {
+        childProps?.onClick?.(e)
+        handleClick(e)
+      },
+      className: cn("cursor-pointer", childProps?.className, className),
+    })
+  }
 
   return (
     <div
       ref={context.triggerRef}
       title={title}
-      onClick={(e) => {
-        e.stopPropagation()
-        onClick?.(e)
-        context.setOpen((prev) => !prev)
-      }}
+      onClick={handleClick}
       className={cn("cursor-pointer inline-flex items-center", className)}
     >
       {children}

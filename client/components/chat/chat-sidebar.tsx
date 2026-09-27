@@ -2,15 +2,20 @@
 
 import React, { useState } from "react"
 import { ConversationSession } from "@/types/chat"
-import { Plus, Search, MessageSquare, Trash2, Edit3, Settings, User, Sparkles, MoreHorizontal, X, Loader2, Pin } from "lucide-react"
+import { Plus, Search, MessageSquare, Trash2, Edit3, Settings, Sparkles, MoreHorizontal, Loader2, Pin } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { Tooltip } from "@/components/ui/tooltip"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { Sheet } from "@/components/ui/sheet"
 import { useCurrentUser } from "@/hooks/use-auth"
-import { ChatSidebarSkeleton, SidebarSkeletonContent } from "@/components/chat/chat-sidebar-skeleton"
+import { ChatSidebarSkeleton } from "@/components/chat/chat-sidebar-skeleton"
+import { cn } from "@/lib/utils"
 
-interface ChatSidebarProps {
+export interface ChatSidebarProps {
   conversations: ConversationSession[]
   activeId: string
   onSelectConversation: (id: string) => void
@@ -21,6 +26,8 @@ interface ChatSidebarProps {
   onOpenSettings?: () => void
   isOpenMobile?: boolean
   onCloseMobile?: () => void
+  isCollapsed?: boolean
+  onToggleCollapse?: () => void
   isMessagesLoading?: boolean
   isLoading?: boolean
 }
@@ -34,6 +41,7 @@ export function SidebarContent({
   onRenameConversation,
   onTogglePinConversation,
   onOpenSettings,
+  onToggleCollapse,
   isMessagesLoading,
 }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("")
@@ -46,11 +54,12 @@ export function SidebarContent({
   const filtered = conversations.filter((c) =>
     c.title.toLowerCase().includes(searchQuery.toLowerCase())
   )
+
   return (
-    <div className="flex h-full w-full flex-col bg-[#05070B] p-4 text-slate-200 border-r border-white/10">
+    <div className="flex h-full w-full flex-col bg-[#05070B] p-4 text-slate-200 border-r border-white/10 select-none">
       {/* Top Header & Branding */}
       <div className="shrink-0">
-        <div className="flex items-center justify-between pb-4 border-b border-white/5 mb-4">
+        <div className="flex items-center justify-between pb-3">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 p-0.5 shadow-md flex items-center justify-center">
               <div className="h-full w-full rounded-[10px] bg-[#05070B] flex items-center justify-center">
@@ -64,16 +73,18 @@ export function SidebarContent({
           </div>
         </div>
 
-        {/* New Chat Button */}
-        <button
+        <Separator className="mb-4 bg-white/5" />
+
+        {/* New Chat Button using shadcn Button */}
+        <Button
           onClick={onNewChat}
-          className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 py-2.5 px-4 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-950/40 hover:from-emerald-400 hover:to-teal-400 active:scale-[0.98] transition-all cursor-pointer mb-4"
+          className="w-full mb-4 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 py-2.5 h-10 px-4 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-950/40 hover:from-emerald-400 hover:to-teal-400 active:scale-[0.98] transition-all cursor-pointer border-0"
         >
           <Plus className="h-4 w-4 stroke-[3]" />
           <span>New Chat</span>
-        </button>
+        </Button>
 
-        {/* Search Bar */}
+        {/* Search Bar using shadcn Input */}
         <div className="relative mb-4">
           <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
           <Input
@@ -103,11 +114,12 @@ export function SidebarContent({
                 <div
                   key={item.id}
                   onClick={() => onSelectConversation(item.id)}
-                  className={`group relative flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition-all cursor-pointer ${
+                  className={cn(
+                    "group relative flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition-all cursor-pointer",
                     isActive
                       ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 shadow-sm"
                       : "text-slate-300 hover:bg-white/[0.05] hover:text-white"
-                  }`}
+                  )}
                 >
                   <div className="flex items-center gap-2 overflow-hidden pr-2 flex-1 min-w-0">
                     {isLoadingThis ? (
@@ -123,11 +135,15 @@ export function SidebarContent({
                   {/* Dropdown Options on hover/focus/open */}
                   <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity shrink-0 ml-1">
                     <DropdownMenu>
-                      <DropdownMenuTrigger
-                        className="p-1 rounded-md hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                        title="Options"
-                      >
-                        <MoreHorizontal className="h-3.5 w-3.5" />
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 p-0 rounded-md text-slate-400 hover:text-white hover:bg-white/10"
+                          title="Options"
+                        >
+                          <MoreHorizontal className="h-3.5 w-3.5" />
+                        </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="right" side="auto" className="w-36 min-w-[8.5rem] z-50">
                         <DropdownMenuItem
@@ -169,9 +185,9 @@ export function SidebarContent({
                     <div className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-400/90">
                       <Pin className="h-2.5 w-2.5 rotate-45 fill-amber-400/40" />
                       <span>Pinned</span>
-                      <span className="ml-auto text-[9px] px-1.5 py-0.2 rounded-full bg-amber-400/10 text-amber-300 font-mono">
+                      <Badge variant="default" className="ml-auto text-[9px] px-1.5 py-0 rounded-full bg-amber-400/10 text-amber-300 font-mono border-amber-400/20">
                         {pinnedItems.length}
-                      </span>
+                      </Badge>
                     </div>
                     {pinnedItems.map(renderConversationRow)}
                   </div>
@@ -179,12 +195,10 @@ export function SidebarContent({
 
                 {/* Separator between Pinned and Other Chats */}
                 {pinnedItems.length > 0 && unpinnedItems.length > 0 && (
-                  <div className="relative py-1">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-white/10" />
-                    </div>
-                    <div className="relative flex justify-center text-[9px] uppercase">
-                      <span className="bg-[#0A0F18] px-2 text-slate-500 font-semibold tracking-wider">
+                  <div className="relative py-2">
+                    <Separator className="bg-white/10" />
+                    <div className="relative flex justify-center text-[9px] uppercase -top-2.5">
+                      <span className="bg-[#05070B] px-2 text-slate-500 font-semibold tracking-wider">
                         Chats
                       </span>
                     </div>
@@ -209,7 +223,7 @@ export function SidebarContent({
       </div>
 
       {/* User Footer Profile & Settings */}
-      <div className="pt-4 border-t border-white/10 flex items-center justify-between shrink-0">
+      <div className="pt-3 border-t border-white/10 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5 overflow-hidden">
           <Avatar className="h-8 w-8 bg-emerald-950 border border-emerald-500/30 shrink-0">
             <AvatarFallback className="bg-emerald-950 text-emerald-300 text-xs font-bold">
@@ -224,13 +238,17 @@ export function SidebarContent({
           </div>
         </div>
 
-        <button
-          onClick={onOpenSettings}
-          className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-          aria-label="Settings"
-        >
-          <Settings className="h-4 w-4" />
-        </button>
+        <Tooltip content="Settings" side="top">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onOpenSettings}
+            className="h-8 w-8 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            aria-label="Settings"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+        </Tooltip>
       </div>
     </div>
   )
@@ -242,20 +260,33 @@ export function ChatSidebar(props: ChatSidebarProps) {
       <ChatSidebarSkeleton
         isOpenMobile={props.isOpenMobile}
         onCloseMobile={props.onCloseMobile}
+        isCollapsed={props.isCollapsed}
       />
     )
   }
 
   return (
     <>
-      {/* Desktop Sidebar (Fixed 260px) */}
-      <aside className="hidden md:flex h-screen w-64 shrink-0 flex-col">
-        <SidebarContent {...props} />
+      {/* Desktop Sidebar (Smooth Minimize / Maximize transition) */}
+      <aside
+        className={cn(
+          "hidden md:flex h-screen shrink-0 flex-col border-r border-white/10 bg-[#05070B] transition-all duration-300 ease-in-out overflow-hidden",
+          props.isCollapsed ? "w-0 border-r-0 opacity-0 pointer-events-none" : "w-64 opacity-100"
+        )}
+      >
+        <div className="w-64 h-full flex flex-col">
+          <SidebarContent {...props} />
+        </div>
       </aside>
 
       {/* Mobile Drawer (Sheet) */}
       {props.isOpenMobile && (
-        <Sheet isOpen={props.isOpenMobile} onClose={props.onCloseMobile || (() => {})}>
+        <Sheet
+          isOpen={props.isOpenMobile}
+          onClose={props.onCloseMobile || (() => {})}
+          side="left"
+          showCloseButton={true}
+        >
           <div className="h-full w-full">
             <SidebarContent {...props} />
           </div>

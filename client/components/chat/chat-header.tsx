@@ -1,218 +1,55 @@
 "use client"
 
-import React, { useState } from "react"
-import { Menu, Sparkles, ChevronDown, Plus, Share2, MoreVertical, Zap, Bot, Brain, Pin, FileText, X } from "lucide-react"
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+import React from "react"
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { PinItem } from "@/types/pin"
-import { UserDocument } from "@/types/document"
+import { Tooltip } from "@/components/ui/tooltip"
 
-interface ChatHeaderProps {
-  onToggleMobileSidebar: () => void
-  onNewChat: () => void
-  selectedModel: string
-  setSelectedModel: (model: string) => void
+export interface ChatHeaderProps {
+  onToggleSidebar: () => void
+  isSidebarOpen?: boolean
+  // Optional legacy props accepted for backwards compatibility
+  onToggleMobileSidebar?: () => void
+  onNewChat?: () => void
+  selectedModel?: string
+  setSelectedModel?: (model: string) => void
   pinnedCount?: number
-  pinnedItems?: PinItem[]
+  pinnedItems?: any[]
   onSelectPinnedMessage?: (messageId: string) => void
   documentsCount?: number
   onOpenDocuments?: () => void
-  activeDocument?: UserDocument | null
+  activeDocument?: any
   onClearActiveDocument?: () => void
 }
 
-const MODELS = [
-  { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", provider: "Google", badge: "Fast", icon: Zap },
-  { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", provider: "Google", badge: "Reasoning", icon: Brain },
-  { id: "claude-3.5-sonnet", name: "Claude 3.5 Sonnet", provider: "Anthropic", badge: "Coding", icon: Bot },
-  { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI", badge: "Multimodal", icon: Sparkles },
-]
-
 export function ChatHeader({
+  onToggleSidebar,
+  isSidebarOpen = true,
   onToggleMobileSidebar,
-  onNewChat,
-  selectedModel,
-  setSelectedModel,
-  pinnedCount = 0,
-  pinnedItems = [],
-  onSelectPinnedMessage,
-  documentsCount = 0,
-  onOpenDocuments,
-  activeDocument,
-  onClearActiveDocument,
 }: ChatHeaderProps) {
-
-  const currentModel = MODELS.find((m) => m.id === selectedModel) || MODELS[0]
+  // Use onToggleSidebar, falling back to onToggleMobileSidebar if needed
+  const handleToggle = onToggleSidebar || onToggleMobileSidebar || (() => {})
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-white/10 bg-[#05070B]/80 px-4 backdrop-blur-xl">
-      <div className="flex items-center gap-3">
-        {/* Mobile menu trigger */}
-        <button
-          onClick={onToggleMobileSidebar}
-          className="md:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-          aria-label="Open sidebar menu"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-
-        {/* Model Selector Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger>
-            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-white/[0.08] hover:border-white/20 transition-all">
-              <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
-              <span>{currentModel.name}</span>
-              <Badge variant="default" className="text-[10px] px-1.5 py-0">
-                {currentModel.badge}
-              </Badge>
-              <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-            </div>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="left" className="w-56">
-            <DropdownMenuLabel>Select AI Model</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {MODELS.map((model) => {
-              const Icon = model.icon
-              const isSelected = model.id === selectedModel
-              return (
-                <DropdownMenuItem
-                  key={model.id}
-                  onClick={() => setSelectedModel(model.id)}
-                  className={`flex items-center justify-between ${isSelected ? "bg-emerald-500/10 text-emerald-300 font-semibold" : ""}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Icon className="h-3.5 w-3.5 text-emerald-400" />
-                    <span>{model.name}</span>
-                  </div>
-                  <span className="text-[10px] text-slate-500 font-mono">{model.provider}</span>
-                </DropdownMenuItem>
-              )
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* Active Scoped Document Pill in Header */}
-        {activeDocument && (
-          <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs animate-in fade-in">
-            <FileText className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-            <span className="truncate max-w-[150px] md:max-w-[200px] font-medium text-white">
-              {activeDocument.filename}
-            </span>
-            <span className="text-[10px] font-mono text-emerald-300 bg-emerald-500/20 px-1 py-0.5 rounded">
-              Doc Scoped
-            </span>
-            {onClearActiveDocument && (
-              <button
-                type="button"
-                onClick={onClearActiveDocument}
-                className="p-0.5 rounded text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                title="Exit document focus"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Header Actions */}
-      <div className="flex items-center gap-2">
-        {/* Documents Knowledge Base Trigger */}
-        {onOpenDocuments && (
-          <button
-            type="button"
-            onClick={onOpenDocuments}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-teal-500/30 bg-teal-500/10 text-teal-300 hover:bg-teal-500/20 text-xs font-semibold cursor-pointer transition-all"
-            title="Manage Document Knowledge Base (Agentic RAG)"
-          >
-            <FileText className="h-3.5 w-3.5 text-teal-400" />
-            <span className="hidden sm:inline">Docs</span>
-            {documentsCount > 0 && (
-              <span className="text-[10px] bg-teal-400/20 px-1.5 rounded-full font-mono text-teal-300">
-                {documentsCount}
-              </span>
-            )}
-          </button>
-        )}
-
-        {/* Pinned Messages Trigger */}
-        {pinnedCount > 0 && (
-
-          <DropdownMenu>
-            <DropdownMenuTrigger>
-              <div
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 text-xs font-semibold cursor-pointer transition-all"
-                title={`${pinnedCount} pinned messages`}
-              >
-                <Pin className="h-3.5 w-3.5 fill-amber-400/40 rotate-45" />
-                <span className="hidden sm:inline">Pinned</span>
-                <span className="text-[10px] bg-amber-400/20 px-1.5 rounded-full font-mono">{pinnedCount}</span>
-              </div>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="right" className="w-80 max-h-96 overflow-y-auto">
-              <DropdownMenuLabel className="text-amber-400 font-semibold text-xs flex items-center gap-1.5">
-                <Pin className="h-3.5 w-3.5 rotate-45 fill-amber-400/40" />
-                <span>Pinned Messages ({pinnedCount})</span>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {pinnedItems.map((pin) => (
-                <DropdownMenuItem
-                  key={pin.id}
-                  onClick={() => onSelectPinnedMessage?.(pin.message_id)}
-                  className="flex flex-col items-start gap-1 p-2.5 cursor-pointer hover:bg-white/5 transition-colors border-b border-white/5 last:border-0"
-                >
-                  <span className="text-xs text-slate-200 line-clamp-3 leading-relaxed">
-                    {pin.message?.content || pin.note || "Pinned Message"}
-                  </span>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[9px] uppercase tracking-wider text-emerald-400 font-mono">
-                      {pin.message?.role || "message"}
-                    </span>
-                    <span className="text-[10px] text-slate-500 font-mono">
-                      {new Date(pin.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  </div>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-
+    <header className="sticky top-0 z-30 flex h-12 w-full items-center border-b border-white/10 bg-[#05070B]/80 px-3 backdrop-blur-xl shrink-0">
+      <Tooltip
+        content={isSidebarOpen ? "Minimize sidebar" : "Maximize sidebar"}
+        side="right"
+      >
         <Button
-          variant="outline"
-          size="sm"
-          onClick={onNewChat}
-          className="hidden sm:flex items-center gap-1.5 text-xs border-white/10 hover:bg-white/10"
+          variant="ghost"
+          size="icon"
+          onClick={handleToggle}
+          className="h-8 w-8 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg cursor-pointer transition-colors"
+          aria-label={isSidebarOpen ? "Minimize sidebar" : "Maximize sidebar"}
         >
-          <Plus className="h-3.5 w-3.5 text-emerald-400" />
-          <span>New Chat</span>
+          {isSidebarOpen ? (
+            <PanelLeftClose className="h-4 w-4" />
+          ) : (
+            <PanelLeftOpen className="h-4 w-4" />
+          )}
         </Button>
-
-        <button
-          onClick={() => {}}
-          className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-          aria-label="Share chat"
-        >
-          <Share2 className="h-4 w-4" />
-        </button>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger>
-            <div className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
-              <MoreVertical className="h-4 w-4" />
-            </div>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="right">
-            <DropdownMenuItem onClick={onNewChat}>
-              <Plus className="h-3.5 w-3.5 mr-2" /> Start New Chat
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {}}>
-              <Share2 className="h-3.5 w-3.5 mr-2" /> Export Conversation
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      </Tooltip>
     </header>
   )
 }

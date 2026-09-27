@@ -102,7 +102,16 @@ export default function ChatPage() {
   const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash")
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false)
   const [showScrollBottom, setShowScrollBottom] = useState<boolean>(false)
+
+  const handleToggleSidebar = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setMobileSidebarOpen((prev) => !prev)
+    } else {
+      setIsSidebarCollapsed((prev) => !prev)
+    }
+  }
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false)
   const [isDocumentsOpen, setIsDocumentsOpen] = useState<boolean>(false)
   const [documents, setDocuments] = useState<UserDocument[]>([])
@@ -775,25 +784,18 @@ Click any line in the transcript above to seek the video player to that timestam
         onOpenSettings={() => setIsSettingsOpen(true)}
         isOpenMobile={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={handleToggleSidebar}
         isMessagesLoading={isMessagesLoading}
         isLoading={isConversationsLoading}
       />
 
       {/* Main Chat Interface */}
       <div className="flex flex-1 flex-col h-full overflow-hidden relative">
-        {/* Fixed Header */}
+        {/* Fixed Header with only one button to minimise/maximise sidebar */}
         <ChatHeader
-          selectedModel={selectedModel}
-          setSelectedModel={setSelectedModel}
-          onToggleMobileSidebar={() => setMobileSidebarOpen(true)}
-          onNewChat={handleNewChat}
-          pinnedCount={pinnedItems.length}
-          pinnedItems={pinnedItems}
-          onSelectPinnedMessage={handleSelectPinnedMessage}
-          documentsCount={documents.length}
-          onOpenDocuments={() => setIsDocumentsOpen(true)}
-          activeDocument={activeDocument}
-          onClearActiveDocument={() => setActiveDocument(null)}
+          onToggleSidebar={handleToggleSidebar}
+          isSidebarOpen={!isSidebarCollapsed}
         />
 
 

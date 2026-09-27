@@ -9,6 +9,7 @@ export interface ChatSidebarSkeletonProps {
   className?: string
   isOpenMobile?: boolean
   onCloseMobile?: () => void
+  isCollapsed?: boolean
 }
 
 export function SidebarSkeletonContent({ className }: { className?: string }) {
@@ -113,17 +114,31 @@ export function ChatSidebarSkeleton({
   className,
   isOpenMobile,
   onCloseMobile,
+  isCollapsed,
 }: ChatSidebarSkeletonProps) {
   return (
     <>
-      {/* Desktop Sidebar Skeleton (Fixed 260px) */}
-      <aside className={cn("hidden md:flex h-screen w-64 shrink-0 flex-col", className)}>
-        <SidebarSkeletonContent />
+      {/* Desktop Sidebar Skeleton */}
+      <aside
+        className={cn(
+          "hidden md:flex h-screen shrink-0 flex-col border-r border-white/10 bg-[#05070B] transition-all duration-300 ease-in-out overflow-hidden",
+          isCollapsed ? "w-0 border-r-0 opacity-0 pointer-events-none" : "w-64 opacity-100",
+          className
+        )}
+      >
+        <div className="w-64 h-full flex flex-col">
+          <SidebarSkeletonContent />
+        </div>
       </aside>
 
       {/* Mobile Drawer (Sheet) Skeleton */}
       {isOpenMobile && (
-        <Sheet isOpen={isOpenMobile} onClose={onCloseMobile || (() => {})}>
+        <Sheet
+          isOpen={isOpenMobile}
+          onClose={onCloseMobile || (() => {})}
+          side="left"
+          showCloseButton={false}
+        >
           <div className="h-full w-full">
             <SidebarSkeletonContent />
           </div>
