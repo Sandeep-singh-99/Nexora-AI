@@ -69,6 +69,9 @@ export function ChatInput({
   } | null>(null)
   const [isUploadingSensitive, setIsUploadingSensitive] = useState(false)
 
+  const isSubmittingLocalRef = useRef(false)
+  const lastSubmitTimeRef = useRef(0)
+
   // Auto-grow textarea
   useEffect(() => {
     if (textareaRef.current) {
@@ -80,6 +83,24 @@ export function ChatInput({
   const isYouTubeInput = input.trim().startsWith("/youtube") || /youtube\.com|youtu\.be/.test(input)
   const showSlashMenu = input.startsWith("/") && !input.includes(" ") && "/youtube".startsWith(input.toLowerCase())
 
+  const handleSafeSubmit = (customPrompt?: string) => {
+    const now = Date.now()
+    // Debounce rapid triggers (e.g. pressing Enter and clicking Submit immediately)
+    if (now - lastSubmitTimeRef.current < 600) return
+    if (isLoading || isSubmittingLocalRef.current) return
+
+    const val = customPrompt !== undefined ? customPrompt : input
+    if (!val.trim()) return
+
+    lastSubmitTimeRef.current = now
+    isSubmittingLocalRef.current = true
+    setTimeout(() => {
+      isSubmittingLocalRef.current = false
+    }, 600)
+
+    onSubmit(customPrompt)
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Tab" && showSlashMenu) {
       e.preventDefault()
@@ -88,9 +109,7 @@ export function ChatInput({
     }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
-      if (input.trim() && !isLoading) {
-        onSubmit()
-      }
+      handleSafeSubmit()
     }
   }
 
@@ -206,21 +225,21 @@ export function ChatInput({
           <span className="text-[11px] text-slate-400 font-mono shrink-0 mr-1">Suggestions:</span>
           <button
             type="button"
-            onClick={() => onSubmit("Summarize this document")}
+            onClick={() => handleSafeSubmit("Summarize this document")}
             className="px-2.5 py-1 rounded-lg border border-white/10 bg-white/[0.04] text-slate-300 hover:text-white hover:border-emerald-500/40 hover:bg-emerald-500/10 transition-all text-xs shrink-0 cursor-pointer"
           >
             📄 Summarize this document
           </button>
           <button
             type="button"
-            onClick={() => onSubmit("What is the context of this PDF?")}
+            onClick={() => handleSafeSubmit("What is the context of this PDF?")}
             className="px-2.5 py-1 rounded-lg border border-white/10 bg-white/[0.04] text-slate-300 hover:text-white hover:border-emerald-500/40 hover:bg-emerald-500/10 transition-all text-xs shrink-0 cursor-pointer"
           >
             💡 What is the context of this PDF?
           </button>
           <button
             type="button"
-            onClick={() => onSubmit("What are the key points and takeaways?")}
+            onClick={() => handleSafeSubmit("What are the key points and takeaways?")}
             className="px-2.5 py-1 rounded-lg border border-white/10 bg-white/[0.04] text-slate-300 hover:text-white hover:border-emerald-500/40 hover:bg-emerald-500/10 transition-all text-xs shrink-0 cursor-pointer"
           >
             🔍 Key points & takeaways
@@ -324,9 +343,7 @@ export function ChatInput({
       <form
         onSubmit={(e) => {
           e.preventDefault()
-          if (input.trim() && !isLoading) {
-            onSubmit()
-          }
+          handleSafeSubmit()
         }}
         className="relative rounded-2xl border border-white/15 bg-[#0D131D]/90 p-3 shadow-2xl backdrop-blur-2xl transition-all focus-within:border-emerald-500/50 focus-within:ring-1 focus-within:ring-emerald-500/50"
       >
@@ -457,10 +474,10 @@ export function ChatInput({
             ) : (
               <button
                 type="submit"
-                disabled={!input.trim()}
-                className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all cursor-pointer ${
-                  input.trim()
-                    ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-md shadow-emerald-950/50"
+                disabled={!input.trim() || isLoading}
+                className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${
+                  input.trim() && !isLoading
+                    ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-md shadow-emerald-950/50 cursor-pointer"
                     : "bg-white/5 text-slate-600 border border-white/5 cursor-not-allowed"
                 }`}
                 aria-label="Send message"

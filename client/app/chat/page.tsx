@@ -125,6 +125,7 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const isSubmittingRef = useRef<boolean>(false)
 
   const activeMessages = activeId ? messagesMap[activeId] || [] : []
 
@@ -542,7 +543,14 @@ Click any line in the transcript above to seek the video player to that timestam
   // Submit User Message
   const handleSubmitMessage = async (customPrompt?: string) => {
     const textToSend = customPrompt || input
-    if (!textToSend.trim() || isLoading) return
+    if (!textToSend.trim() || isLoading || isSubmittingRef.current) return
+
+    // Immediately acquire lock and clear input to prevent race conditions or double clicks
+    isSubmittingRef.current = true
+    setIsLoading(true)
+    if (!customPrompt) {
+      setInput("")
+    }
 
     const isNewConversation = !activeId
     let currentConvId = activeId
@@ -561,6 +569,8 @@ Click any line in the transcript above to seek the video player to that timestam
         currentConvId = session.id
       } catch (err) {
         console.error("Failed to create conversation on message submit:", err)
+        setIsLoading(false)
+        isSubmittingRef.current = false
         return
       }
     }
@@ -573,7 +583,12 @@ Click any line in the transcript above to seek the video player to that timestam
     if (isYouTubeCommand || (ytUrlMatch && !activeDocument)) {
       const targetUrl = ytUrlMatch ? ytUrlMatch[0] : rawYtId || ""
       if (targetUrl) {
-        await handleYouTubeIngest(targetUrl, currentConvId, textToSend, isNewConversation)
+        try {
+          await handleYouTubeIngest(targetUrl, currentConvId, textToSend, isNewConversation)
+        } finally {
+          setIsLoading(false)
+          isSubmittingRef.current = false
+        }
         return
       }
     }
@@ -606,9 +621,6 @@ Click any line in the transcript above to seek the video player to that timestam
       ...prev,
       [currentConvId]: [...(prev[currentConvId] || []), userMsg, initialAssistantMsg],
     }))
-
-    setInput("")
-    setIsLoading(true)
 
     // Save user message to backend DB asynchronously
     addMessageApi(currentConvId, textToSend, "user").catch((err) =>
@@ -754,6 +766,7 @@ Click any line in the transcript above to seek the video player to that timestam
       }
     } finally {
       setIsLoading(false)
+      isSubmittingRef.current = false
       abortControllerRef.current = null
       setMessagesMap((prev) => {
         const currentList = prev[currentConvId] || []
