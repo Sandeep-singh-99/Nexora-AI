@@ -57,14 +57,19 @@ export function DropdownMenuTrigger({
 export function DropdownMenuContent({
   children,
   align = "right",
+  side = "auto",
   className,
 }: {
   children: React.ReactNode
   align?: "left" | "right" | "center"
+  side?: "top" | "bottom" | "auto"
   className?: string
 }) {
   const context = React.useContext(DropdownMenuContext)
   const ref = React.useRef<HTMLDivElement>(null)
+  const [computedSide, setComputedSide] = React.useState<"top" | "bottom">(
+    side === "top" ? "top" : "bottom"
+  )
 
   if (!context) throw new Error("DropdownMenuContent must be used within DropdownMenu")
 
@@ -86,6 +91,43 @@ export function DropdownMenuContent({
     }
   }, [context.open, context])
 
+  React.useLayoutEffect(() => {
+    if (!context.open) return
+
+    if (side !== "auto") {
+      setComputedSide(side)
+      return
+    }
+
+    if (context.triggerRef.current) {
+      const triggerRect = context.triggerRef.current.getBoundingClientRect()
+      const windowHeight = window.innerHeight
+
+      const spaceBelowWindow = windowHeight - triggerRect.bottom
+
+      // Check if trigger is inside a scrollable container
+      const scrollParent = context.triggerRef.current.closest(
+        ".overflow-y-auto, .overflow-auto, [data-scroll-container]"
+      )
+      let spaceBelowContainer = Infinity
+      if (scrollParent) {
+        const containerRect = scrollParent.getBoundingClientRect()
+        spaceBelowContainer = containerRect.bottom - triggerRect.bottom
+      }
+
+      // If remaining space below is less than 150px and there is sufficient space above, flip upwards
+      const minRequiredSpace = 150
+      if (
+        (spaceBelowWindow < minRequiredSpace || spaceBelowContainer < minRequiredSpace) &&
+        triggerRect.top > minRequiredSpace
+      ) {
+        setComputedSide("top")
+      } else {
+        setComputedSide("bottom")
+      }
+    }
+  }, [context.open, side, context.triggerRef])
+
   if (!context.open) return null
 
   const alignClasses = {
@@ -94,13 +136,19 @@ export function DropdownMenuContent({
     center: "left-1/2 -translate-x-1/2",
   }
 
+  const sideClasses = {
+    bottom: "top-full mt-2",
+    top: "bottom-full mb-2",
+  }
+
   return (
     <div
       ref={ref}
       onClick={(e) => e.stopPropagation()}
       className={cn(
-        "absolute top-full mt-2 z-50 min-w-[12rem] rounded-xl border border-white/10 bg-[#0D131D] p-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-150",
+        "absolute z-50 min-w-[12rem] rounded-xl border border-white/10 bg-[#0D131D] p-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-150",
         alignClasses[align],
+        sideClasses[computedSide],
         className
       )}
     >

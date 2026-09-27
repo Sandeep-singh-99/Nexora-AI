@@ -15,12 +15,12 @@ export function SidebarSkeletonContent({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex h-full w-full flex-col justify-between bg-[#05070B] p-4 text-slate-200 border-r border-white/10 select-none",
+        "flex h-full w-full flex-col bg-[#05070B] p-4 text-slate-200 border-r border-white/10 select-none",
         className
       )}
     >
       {/* Top Section */}
-      <div>
+      <div className="shrink-0">
         {/* Header & Branding Skeleton */}
         <div className="flex items-center justify-between pb-4 border-b border-white/5 mb-4">
           <div className="flex items-center gap-2.5">
@@ -47,55 +47,55 @@ export function SidebarSkeletonContent({ className }: { className?: string }) {
             <div className="h-3 w-24 rounded bg-white/10" />
           </div>
         </div>
+      </div>
 
-        {/* Conversations List Skeleton */}
-        <div className="space-y-5 max-h-[calc(100vh-280px)] overflow-hidden pr-1">
-          {/* Section 1: Today */}
-          <div className="space-y-2">
-            <div className="px-2">
-              <Skeleton className="h-2.5 w-12 bg-white/10" />
+      {/* Conversations List Skeleton */}
+      <div className="flex-1 min-h-0 space-y-5 overflow-hidden pr-1 pb-4">
+        {/* Section 1: Today */}
+        <div className="space-y-2">
+          <div className="px-2">
+            <Skeleton className="h-2.5 w-12 bg-white/10" />
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 bg-white/[0.03] border border-white/[0.04]">
+              <div className="h-3.5 w-3.5 rounded bg-emerald-500/20 shrink-0" />
+              <Skeleton className="h-3.5 w-3/4 bg-white/10" />
             </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 bg-white/[0.03] border border-white/[0.04]">
-                <div className="h-3.5 w-3.5 rounded bg-emerald-500/20 shrink-0" />
-                <Skeleton className="h-3.5 w-3/4 bg-white/10" />
-              </div>
-              <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5">
-                <div className="h-3.5 w-3.5 rounded bg-white/10 shrink-0" />
-                <Skeleton className="h-3.5 w-4/5 bg-white/10" />
-              </div>
-              <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5">
-                <div className="h-3.5 w-3.5 rounded bg-white/10 shrink-0" />
-                <Skeleton className="h-3.5 w-3/5 bg-white/10" />
-              </div>
+            <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5">
+              <div className="h-3.5 w-3.5 rounded bg-white/10 shrink-0" />
+              <Skeleton className="h-3.5 w-4/5 bg-white/10" />
+            </div>
+            <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5">
+              <div className="h-3.5 w-3.5 rounded bg-white/10 shrink-0" />
+              <Skeleton className="h-3.5 w-3/5 bg-white/10" />
             </div>
           </div>
+        </div>
 
-          {/* Section 2: Previous 7 Days */}
-          <div className="space-y-2">
-            <div className="px-2">
-              <Skeleton className="h-2.5 w-24 bg-white/10" />
+        {/* Section 2: Previous 7 Days */}
+        <div className="space-y-2">
+          <div className="px-2">
+            <Skeleton className="h-2.5 w-24 bg-white/10" />
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5">
+              <div className="h-3.5 w-3.5 rounded bg-white/10 shrink-0" />
+              <Skeleton className="h-3.5 w-2/3 bg-white/10" />
             </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5">
-                <div className="h-3.5 w-3.5 rounded bg-white/10 shrink-0" />
-                <Skeleton className="h-3.5 w-2/3 bg-white/10" />
-              </div>
-              <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5">
-                <div className="h-3.5 w-3.5 rounded bg-white/10 shrink-0" />
-                <Skeleton className="h-3.5 w-4/5 bg-white/10" />
-              </div>
-              <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5">
-                <div className="h-3.5 w-3.5 rounded bg-white/10 shrink-0" />
-                <Skeleton className="h-3.5 w-1/2 bg-white/10" />
-              </div>
+            <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5">
+              <div className="h-3.5 w-3.5 rounded bg-white/10 shrink-0" />
+              <Skeleton className="h-3.5 w-4/5 bg-white/10" />
+            </div>
+            <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5">
+              <div className="h-3.5 w-3.5 rounded bg-white/10 shrink-0" />
+              <Skeleton className="h-3.5 w-1/2 bg-white/10" />
             </div>
           </div>
         </div>
       </div>
 
       {/* User Footer Profile Skeleton */}
-      <div className="pt-4 border-t border-white/10 flex items-center justify-between">
+      <div className="pt-4 border-t border-white/10 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="h-8 w-8 rounded-full bg-emerald-950/50 border border-emerald-500/20 shrink-0 animate-pulse" />
           <div className="space-y-1.5">
