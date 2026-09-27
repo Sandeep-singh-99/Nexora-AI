@@ -31,7 +31,7 @@ export function ChatHeader({
   const handleToggle = onToggleSidebar || onToggleMobileSidebar || (() => {})
 
   return (
-    <header className="sticky top-0 z-30 flex h-12 w-full items-center border-b border-white/10 bg-[#05070B]/80 px-3 backdrop-blur-xl shrink-0">
+    <header className="sticky top-0 z-30 flex h-12 w-full items-center border-b border-slate-200 dark:border-white/10 bg-white/80 dark:bg-[#05070B]/80 px-3 backdrop-blur-xl shrink-0 transition-colors">
       <Tooltip
         content={isSidebarOpen ? "Minimize sidebar" : "Maximize sidebar"}
         side="right"
@@ -40,7 +40,7 @@ export function ChatHeader({
           variant="ghost"
           size="icon"
           onClick={handleToggle}
-          className="h-8 w-8 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg cursor-pointer transition-colors"
+          className="h-8 w-8 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg cursor-pointer transition-colors"
           aria-label={isSidebarOpen ? "Minimize sidebar" : "Maximize sidebar"}
         >
           {isSidebarOpen ? (

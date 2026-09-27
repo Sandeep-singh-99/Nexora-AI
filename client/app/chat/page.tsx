@@ -36,30 +36,30 @@ function ChatSkeleton() {
     <div className="max-w-4xl mx-auto space-y-8 pb-8 pt-4 animate-pulse">
       {/* Assistant bubble skeleton */}
       <div className="flex w-full gap-3 my-5">
-        <div className="h-8 w-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 shrink-0" />
+        <div className="h-8 w-8 rounded-xl bg-slate-200 dark:bg-emerald-500/10 border border-slate-300 dark:border-emerald-500/20 shrink-0" />
         <div className="flex-1 space-y-3 max-w-2xl">
-          <div className="h-4 w-36 rounded-md bg-white/[0.08]" />
+          <div className="h-4 w-36 rounded-md bg-slate-200 dark:bg-white/[0.08]" />
           <div className="space-y-2 pt-1">
-            <div className="h-3.5 w-full rounded bg-white/[0.05]" />
-            <div className="h-3.5 w-5/6 rounded bg-white/[0.05]" />
-            <div className="h-3.5 w-2/3 rounded bg-white/[0.04]" />
+            <div className="h-3.5 w-full rounded bg-slate-200/70 dark:bg-white/[0.05]" />
+            <div className="h-3.5 w-5/6 rounded bg-slate-200/70 dark:bg-white/[0.05]" />
+            <div className="h-3.5 w-2/3 rounded bg-slate-200/50 dark:bg-white/[0.04]" />
           </div>
         </div>
       </div>
 
       {/* User bubble skeleton */}
       <div className="flex w-full justify-end gap-3 my-5">
-        <div className="w-1/3 h-11 rounded-2xl rounded-tr-sm bg-emerald-600/15 border border-emerald-500/20" />
-        <div className="h-8 w-8 rounded-full bg-emerald-950/40 border border-emerald-500/20 shrink-0" />
+        <div className="w-1/3 h-11 rounded-2xl rounded-tr-sm bg-slate-200 dark:bg-emerald-600/15 border border-slate-300 dark:border-emerald-500/20" />
+        <div className="h-8 w-8 rounded-full bg-slate-200 dark:bg-emerald-950/40 border border-slate-300 dark:border-emerald-500/20 shrink-0" />
       </div>
 
       {/* Another Assistant bubble skeleton */}
       <div className="flex w-full gap-3 my-5">
-        <div className="h-8 w-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 shrink-0" />
+        <div className="h-8 w-8 rounded-xl bg-slate-200 dark:bg-emerald-500/10 border border-slate-300 dark:border-emerald-500/20 shrink-0" />
         <div className="flex-1 space-y-3 max-w-2xl">
-          <div className="h-3.5 w-4/5 rounded bg-white/[0.05]" />
-          <div className="h-28 w-full rounded-xl bg-white/[0.03] border border-white/5" />
-          <div className="h-3.5 w-1/2 rounded bg-white/[0.04]" />
+          <div className="h-3.5 w-4/5 rounded bg-slate-200/70 dark:bg-white/[0.05]" />
+          <div className="h-28 w-full rounded-xl bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5" />
+          <div className="h-3.5 w-1/2 rounded bg-slate-200/50 dark:bg-white/[0.04]" />
         </div>
       </div>
     </div>
@@ -784,7 +784,7 @@ Click any line in the transcript above to seek the video player to that timestam
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[#0A0F18] text-slate-100 font-sans">
+    <div className="flex h-screen w-full overflow-hidden bg-slate-50 dark:bg-[#0A0F18] text-slate-900 dark:text-slate-100 font-sans transition-colors duration-150">
       {/* Sidebar Component */}
       <ChatSidebar
         conversations={conversations}
@@ -817,7 +817,7 @@ Click any line in the transcript above to seek the video player to that timestam
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="h-full overflow-y-auto px-4 md:px-8 py-6 space-y-6 scrollbar-thin scrollbar-thumb-white/10"
+            className="h-full overflow-y-auto px-4 md:px-8 py-6 space-y-6 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-white/10"
           >
             {isConversationsLoading ? (
               <ChatSkeleton />
@@ -858,12 +858,12 @@ Click any line in the transcript above to seek the video player to that timestam
             ) : isMessagesLoading ? (
               <ChatSkeleton />
             ) : activeMessages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full min-h-[45vh] py-8 text-center text-slate-400">
-                <div className="h-12 w-12 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-center mb-3 text-emerald-400 shadow-inner">
+              <div className="flex flex-col items-center justify-center h-full min-h-[45vh] py-8 text-center text-slate-500 dark:text-slate-400">
+                <div className="h-12 w-12 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 flex items-center justify-center mb-3 text-emerald-500 dark:text-emerald-400 shadow-sm dark:shadow-inner">
                   <MessageSquare className="h-5 w-5" />
                 </div>
-                <p className="text-sm font-semibold text-slate-200">No messages in this chat yet</p>
-                <p className="text-xs text-slate-500 mt-1 max-w-xs">Ask a question or enter a prompt below to start chatting.</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">No messages in this chat yet</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs">Ask a question or enter a prompt below to start chatting.</p>
               </div>
             ) : (
               <motion.div
@@ -903,7 +903,7 @@ Click any line in the transcript above to seek the video player to that timestam
         </div>
 
         {/* Dedicated Chat Input Area with clear spacing */}
-        <div className="shrink-0 px-4 md:px-8 pt-4 pb-6 bg-[#0A0F18] border-t border-white/[0.06]">
+        <div className="shrink-0 px-4 md:px-8 pt-4 pb-6 bg-slate-50/90 dark:bg-[#0A0F18] border-t border-slate-200 dark:border-white/[0.06] transition-colors">
           <div className="max-w-4xl mx-auto">
             <ChatInput
               input={input}

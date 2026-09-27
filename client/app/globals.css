@@ -3,8 +3,31 @@
 @import "shadcn/tailwind.css";
 @import "katex/dist/katex.min.css";
 
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
 @layer base {
   :root {
+    --background: #f8fafc;
+    --secondary-bg: #ffffff;
+    --card-bg: #ffffff;
+    --footer-bg: #f1f5f9;
+    --border-subtle: rgba(0, 0, 0, 0.08);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --accent-emerald: #10b981;
+    --accent-teal: #14b8a6;
+    --accent-mint: #34d399;
+
+    --accent-primary: #10b981;
+    --accent-gradient: linear-gradient(135deg, #10b981, #14b8a6);
+    --accent-tint: rgba(16, 185, 129, 0.12);
+    --accent-border: rgba(16, 185, 129, 0.28);
+    --accent-glow: rgba(16, 185, 129, 0.25);
+    --accent-text: #059669;
+  }
+
+  .dark {
     --background: #05070b;
     --secondary-bg: #0a0f18;
     --card-bg: #0d131d;
@@ -13,9 +36,61 @@
     --text-primary: #f5f7fa;
     --text-secondary: #98a2b3;
     --text-muted: #667085;
-    --accent-emerald: #10b981;
-    --accent-teal: #14b8a6;
-    --accent-mint: #34d399;
+    --accent-text: #34d399;
+  }
+
+  [data-accent="emerald"] {
+    --accent-primary: #10b981;
+    --accent-gradient: linear-gradient(135deg, #10b981, #0d9488);
+    --accent-tint: rgba(16, 185, 129, 0.12);
+    --accent-border: rgba(16, 185, 129, 0.3);
+    --accent-glow: rgba(16, 185, 129, 0.3);
+    --accent-text: #10b981;
+  }
+
+  [data-accent="teal"] {
+    --accent-primary: #14b8a6;
+    --accent-gradient: linear-gradient(135deg, #14b8a6, #06b6d4);
+    --accent-tint: rgba(20, 184, 166, 0.12);
+    --accent-border: rgba(20, 184, 166, 0.3);
+    --accent-glow: rgba(20, 184, 166, 0.3);
+    --accent-text: #14b8a6;
+  }
+
+  [data-accent="blue"] {
+    --accent-primary: #3b82f6;
+    --accent-gradient: linear-gradient(135deg, #3b82f6, #6366f1);
+    --accent-tint: rgba(59, 130, 246, 0.12);
+    --accent-border: rgba(59, 130, 246, 0.3);
+    --accent-glow: rgba(59, 130, 246, 0.3);
+    --accent-text: #3b82f6;
+  }
+
+  [data-accent="purple"] {
+    --accent-primary: #8b5cf6;
+    --accent-gradient: linear-gradient(135deg, #8b5cf6, #d946ef);
+    --accent-tint: rgba(139, 92, 246, 0.12);
+    --accent-border: rgba(139, 92, 246, 0.3);
+    --accent-glow: rgba(139, 92, 246, 0.3);
+    --accent-text: #8b5cf6;
+  }
+
+  [data-accent="rose"] {
+    --accent-primary: #f43f5e;
+    --accent-gradient: linear-gradient(135deg, #f43f5e, #fb7185);
+    --accent-tint: rgba(244, 63, 94, 0.12);
+    --accent-border: rgba(244, 63, 94, 0.3);
+    --accent-glow: rgba(244, 63, 94, 0.3);
+    --accent-text: #f43f5e;
+  }
+
+  [data-accent="amber"] {
+    --accent-primary: #f59e0b;
+    --accent-gradient: linear-gradient(135deg, #f59e0b, #ea580c);
+    --accent-tint: rgba(245, 158, 11, 0.12);
+    --accent-border: rgba(245, 158, 11, 0.3);
+    --accent-glow: rgba(245, 158, 11, 0.3);
+    --accent-text: #f59e0b;
   }
 
   body {

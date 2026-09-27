@@ -46,10 +46,10 @@ export function Sheet({
       {/* Content */}
       <div
         className={cn(
-          "relative z-50 h-full w-4/5 max-w-sm bg-[#05070B] shadow-2xl transition-transform duration-300 flex flex-col justify-between animate-in",
+          "relative z-50 h-full w-4/5 max-w-sm bg-slate-50 dark:bg-[#05070B] shadow-2xl transition-transform duration-300 flex flex-col justify-between animate-in",
           isLeft
-            ? "border-r border-white/10 slide-in-from-left"
-            : "border-l border-white/10 slide-in-from-right p-6",
+            ? "border-r border-slate-200 dark:border-white/10 slide-in-from-left"
+            : "border-l border-slate-200 dark:border-white/10 slide-in-from-right p-6",
           className
         )}
       >
@@ -57,7 +57,7 @@ export function Sheet({
           <button
             onClick={onClose}
             className={cn(
-              "absolute top-4 z-50 rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white transition-colors cursor-pointer",
+              "absolute top-4 z-50 rounded-lg p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer",
               isLeft ? "right-4" : "right-4"
             )}
             aria-label="Close menu"

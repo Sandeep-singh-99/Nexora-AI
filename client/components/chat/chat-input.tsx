@@ -27,6 +27,8 @@ import {
 } from "@/lib/api/documents"
 import { GuardrailsDialog } from "./guardrails-dialog"
 import { UserDocument } from "@/types/document"
+import { useAppearance } from "@/components/providers/theme-provider"
+import { cn } from "@/lib/utils"
 
 interface AttachedFileState {
   file: File
@@ -60,6 +62,7 @@ export function ChatInput({
   activeDocument,
   onClearActiveDocument,
 }: ChatInputProps) {
+  const { accentConfig } = useAppearance()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [attachedFile, setAttachedFile] = useState<AttachedFileState | null>(null)
@@ -311,10 +314,10 @@ export function ChatInput({
 
       {/* Slash Commands Dropdown Popover */}
       {showSlashMenu && (
-        <div className="absolute bottom-[calc(100%+8px)] left-0 mb-1 w-80 rounded-xl border border-white/15 bg-[#0D131D]/95 p-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 z-40">
-          <div className="text-[10px] font-mono text-slate-400 px-2 py-1 flex items-center justify-between">
+        <div className="absolute bottom-[calc(100%+8px)] left-0 mb-1 w-80 rounded-xl border border-slate-200 dark:border-white/15 bg-white/95 dark:bg-[#0D131D]/95 p-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 z-40">
+          <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 px-2 py-1 flex items-center justify-between">
             <span>Slash Commands</span>
-            <span className="text-[9px] bg-white/10 px-1 py-0.5 rounded text-slate-300">Tab to complete</span>
+            <span className="text-[9px] bg-slate-100 dark:bg-white/10 px-1 py-0.5 rounded text-slate-600 dark:text-slate-300">Tab to complete</span>
           </div>
           <button
             type="button"
@@ -322,17 +325,17 @@ export function ChatInput({
               setInput("/youtube ")
               textareaRef.current?.focus()
             }}
-            className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-white/10 text-left transition-colors cursor-pointer group"
+            className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-left transition-colors cursor-pointer group"
           >
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-600/20 text-red-400 border border-red-500/30 shrink-0 group-hover:scale-105 transition-transform">
               <Tv className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-white font-mono flex items-center gap-1.5">
+              <p className="text-xs font-semibold text-slate-900 dark:text-white font-mono flex items-center gap-1.5">
                 <span>/youtube</span>
-                <span className="text-slate-400 font-normal font-sans text-[11px]">&lt;URL&gt;</span>
+                <span className="text-slate-500 dark:text-slate-400 font-normal font-sans text-[11px]">&lt;URL&gt;</span>
               </p>
-              <p className="text-[10px] text-slate-400 truncate">
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                 Transcribe video, index into RAG & play on click
               </p>
             </div>
@@ -345,7 +348,10 @@ export function ChatInput({
           e.preventDefault()
           handleSafeSubmit()
         }}
-        className="relative rounded-2xl border border-white/15 bg-[#0D131D]/90 p-3 shadow-2xl backdrop-blur-2xl transition-all focus-within:border-emerald-500/50 focus-within:ring-1 focus-within:ring-emerald-500/50"
+        className={cn(
+          "relative rounded-2xl border border-slate-200 dark:border-white/15 bg-white/90 dark:bg-[#0D131D]/90 p-3 shadow-xl dark:shadow-2xl backdrop-blur-2xl transition-all focus-within:ring-1",
+          `focus-within:${accentConfig.ring}`
+        )}
       >
         {/* Hidden File Input for PDF/DOCX */}
         <input
@@ -371,22 +377,23 @@ export function ChatInput({
               : "Ask Nexora anything, type /youtube <URL>, or attach PDF/DOCX... (Shift+Enter for newline)"
           }
           rows={1}
-          className="min-h-[44px] max-h-[200px] border-none bg-transparent px-2 text-sm text-[#F5F7FA] placeholder:text-slate-500 focus-visible:ring-0"
+          className="min-h-[44px] max-h-[200px] border-none bg-transparent px-2 text-sm text-slate-900 dark:text-[#F5F7FA] placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-0"
         />
 
-        <div className="flex items-center justify-between pt-2 border-t border-white/5">
+        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-white/5">
           {/* Quick tool / context badges */}
-          <div className="flex items-center gap-1.5 text-slate-400 text-xs">
+          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-xs">
             <Tooltip content="Attach PDF or Word document (Max 50 MB)">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isLoading || attachedFile?.status === "uploading"}
-                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                className={cn(
+                  "p-1.5 rounded-lg transition-colors cursor-pointer",
                   attachedFile?.status === "ready"
-                    ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
-                    : "hover:text-white hover:bg-white/10"
-                }`}
+                    ? cn(accentConfig.activeText, accentConfig.activeBg, accentConfig.activeBorder, "border")
+                    : "hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10"
+                )}
                 aria-label="Attach document"
               >
                 <Paperclip className="h-4 w-4" />
@@ -405,7 +412,7 @@ export function ChatInput({
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   isYouTubeInput
                     ? "text-red-400 bg-red-500/15 border border-red-500/30"
-                    : "hover:text-white hover:bg-white/10 text-slate-400"
+                    : "hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400"
                 }`}
                 aria-label="YouTube Transcribe"
               >
@@ -418,12 +425,12 @@ export function ChatInput({
                 <button
                   type="button"
                   onClick={onOpenDocuments}
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer text-[11px]"
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer text-[11px]"
                 >
-                  <Database className="h-3.5 w-3.5 text-teal-400" />
+                  <Database className={cn("h-3.5 w-3.5", accentConfig.activeText)} />
                   <span className="hidden sm:inline">Docs</span>
                   {documentCount > 0 && (
-                    <span className="text-[10px] font-mono px-1 rounded bg-teal-500/20 text-teal-300">
+                    <span className={cn("text-[10px] font-mono px-1 rounded", accentConfig.badgeBg, accentConfig.badgeText)}>
                       {documentCount}
                     </span>
                   )}
@@ -434,27 +441,27 @@ export function ChatInput({
             <Tooltip content="Voice Input (UI Mock)">
               <button
                 type="button"
-                className="p-1.5 rounded-lg hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
               >
                 <Mic className="h-4 w-4" />
               </button>
             </Tooltip>
 
-            <div className="hidden sm:flex items-center gap-1.5 ml-2 border-l border-white/10 pl-2">
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-white/5 px-2 py-0.5 rounded-md border border-white/5">
-                <Globe className="h-3 w-3 text-emerald-400" /> Web Search
+            <div className="hidden sm:flex items-center gap-1.5 ml-2 border-l border-slate-200 dark:border-white/10 pl-2">
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/5">
+                <Globe className={cn("h-3 w-3", accentConfig.activeText)} /> Web Search
               </span>
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-white/5 px-2 py-0.5 rounded-md border border-white/5">
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/5">
                 <Code2 className="h-3 w-3 text-teal-400" /> Generative UI
               </span>
               {activeDocument ? (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-md border border-emerald-500/30 truncate max-w-[180px] animate-in fade-in">
-                  <FileText className="h-3 w-3 text-emerald-400 shrink-0" />
+                <span className={cn("inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md border truncate max-w-[180px] animate-in fade-in", accentConfig.activeBg, accentConfig.activeBorder, accentConfig.activeText)}>
+                  <FileText className="h-3 w-3 shrink-0" />
                   <span className="truncate">{activeDocument.filename}</span>
                 </span>
               ) : (documentCount > 0 || attachedFile?.status === "ready") ? (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 animate-in fade-in">
-                  <FileText className="h-3 w-3 text-emerald-400" /> RAG Active
+                <span className={cn("inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md border animate-in fade-in", accentConfig.activeBg, accentConfig.activeBorder, accentConfig.activeText)}>
+                  <FileText className="h-3 w-3" /> RAG Active
                 </span>
               ) : null}
             </div>
@@ -466,20 +473,21 @@ export function ChatInput({
               <button
                 type="button"
                 onClick={onStop}
-                className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30 transition-all cursor-pointer"
+                className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/20 text-rose-500 dark:text-rose-300 border border-rose-500/30 hover:bg-rose-500/30 transition-all cursor-pointer"
                 aria-label="Stop generating"
               >
-                <Square className="h-3.5 w-3.5 fill-rose-300" />
+                <Square className="h-3.5 w-3.5 fill-current" />
               </button>
             ) : (
               <button
                 type="submit"
                 disabled={!input.trim() || isLoading}
-                className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-xl transition-all",
                   input.trim() && !isLoading
-                    ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-md shadow-emerald-950/50 cursor-pointer"
-                    : "bg-white/5 text-slate-600 border border-white/5 cursor-not-allowed"
-                }`}
+                    ? cn("text-white shadow-md cursor-pointer bg-gradient-to-r", accentConfig.gradient, accentConfig.hoverGradient)
+                    : "bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-white/5 cursor-not-allowed"
+                )}
                 aria-label="Send message"
               >
                 <ArrowUp className="h-4 w-4 stroke-[2.5]" />
@@ -488,7 +496,7 @@ export function ChatInput({
           </div>
         </div>
       </form>
-      <p className="mt-2 text-center text-[11px] text-slate-500 font-sans">
+      <p className="mt-2 text-center text-[11px] text-slate-400 dark:text-slate-500 font-sans">
         Nexora AI • Powered by LangGraph Agentic RAG • 50 MB max per document (zero permanent storage).
       </p>
 
