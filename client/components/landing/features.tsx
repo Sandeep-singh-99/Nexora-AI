@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "motion/react";
 import Link from "next/link";
 import { FEATURES, FEATURE_CATEGORIES } from "@/lib/constants";
 import { FeatureCard } from "@/components/landing/feature-card";
+import { useAuth } from "@/components/providers/auth-provider";
 import {
   ArrowRight,
   Database,
@@ -16,7 +17,12 @@ import {
   Sparkles,
 } from "lucide-react";
 
-export function Features() {
+interface FeaturesProps {
+  onOpenAuth?: (tab: "signin" | "signup") => void;
+}
+
+export function Features({ onOpenAuth }: FeaturesProps) {
+  const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   const filteredFeatures = useMemo(() => {
@@ -160,13 +166,24 @@ export function Features() {
                 Launch a session, ask complex questions, or paste a YouTube video to transcribe.
               </p>
             </div>
-            <Link
-              href="/chat"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-semibold text-xs sm:text-sm hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-950/50 shrink-0 cursor-pointer"
-            >
-              <span>Open Chat</span>
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            {user ? (
+              <Link
+                href="/chat"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-semibold text-xs sm:text-sm hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-950/50 shrink-0 cursor-pointer"
+              >
+                <span>Open Chat</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onOpenAuth?.("signin")}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-semibold text-xs sm:text-sm hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-950/50 shrink-0 cursor-pointer"
+              >
+                <span>Open Chat</span>
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </motion.div>
       </div>

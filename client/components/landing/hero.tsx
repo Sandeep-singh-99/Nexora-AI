@@ -7,12 +7,24 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BlackHoleHeroSection } from "@/components/ui/blackhole-hero-section";
 import { HeroProductPreview } from "@/components/landing/hero-product-preview";
+import { useAuth } from "@/components/providers/auth-provider";
+import { useRouter } from "next/navigation";
 
 interface HeroProps {
   onOpenAuth?: (tab: "signin" | "signup") => void;
 }
 
 export function Hero({ onOpenAuth }: HeroProps) {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  const handleGetStarted = () => {
+    if (user) {
+      router.push("/chat");
+    } else {
+      onOpenAuth?.("signup");
+    }
+  };
   return (
     <section className="relative min-h-screen w-full bg-[#05070B] overflow-hidden pt-28 pb-16 sm:pt-36 sm:pb-24">
       {/* WebGL Black Hole Canvas Background Layer */}
@@ -46,7 +58,7 @@ export function Hero({ onOpenAuth }: HeroProps) {
             <Badge
               variant="default"
               className="px-4 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 backdrop-blur-md text-xs sm:text-sm font-medium text-emerald-300 shadow-lg shadow-emerald-950/50 flex items-center gap-2 cursor-pointer hover:bg-emerald-500/20 transition-colors"
-              onClick={() => onOpenAuth?.("signup")}
+              onClick={handleGetStarted}
             >
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -109,7 +121,7 @@ export function Hero({ onOpenAuth }: HeroProps) {
               variant="primary"
               size="lg"
               className="w-full sm:w-auto shadow-xl shadow-emerald-500/25 hover:shadow-emerald-400/40 text-base py-6 px-8 rounded-2xl group"
-              onClick={() => onOpenAuth?.("signup")}
+              onClick={handleGetStarted}
             >
               <span>Get Started</span>
               <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />

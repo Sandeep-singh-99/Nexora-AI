@@ -4,12 +4,24 @@ import * as React from "react";
 import { motion } from "motion/react";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/providers/auth-provider";
+import { useRouter } from "next/navigation";
 
 interface FinalCTAProps {
   onOpenAuth?: (tab: "signin" | "signup") => void;
 }
 
 export function FinalCTA({ onOpenAuth }: FinalCTAProps) {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  const handleGetStarted = () => {
+    if (user) {
+      router.push("/chat");
+    } else {
+      onOpenAuth?.("signup");
+    }
+  };
   return (
     <section className="relative py-16 sm:py-24 bg-[#0A0F18] border-t border-white/[0.06] overflow-hidden">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -42,7 +54,7 @@ export function FinalCTA({ onOpenAuth }: FinalCTAProps) {
                 variant="primary"
                 size="lg"
                 className="w-full sm:w-auto shadow-xl shadow-emerald-500/30 hover:shadow-emerald-400/40 text-base py-6 px-8 rounded-2xl group"
-                onClick={() => onOpenAuth?.("signup")}
+                onClick={handleGetStarted}
               >
                 <span>Get Started</span>
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />

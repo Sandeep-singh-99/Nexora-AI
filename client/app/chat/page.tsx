@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { motion } from "motion/react"
 import { MessageSquare } from "lucide-react"
 import { useAuth } from "@/components/providers/auth-provider"
@@ -89,7 +90,15 @@ function mapApiToChatMessage(apiMsg: ApiMessage): ChatMessage {
 }
 
 export default function ChatPage() {
+  const router = useRouter()
   const { user, isLoading: isAuthLoading } = useAuth()
+
+  // Redirect unauthenticated users back to landing page with sign-in prompt
+  useEffect(() => {
+    if (!isAuthLoading && !user) {
+      router.replace("/?auth=signin")
+    }
+  }, [user, isAuthLoading, router])
 
   const [conversations, setConversations] = useState<ConversationSession[]>([])
   const [activeId, setActiveId] = useState<string>("")
@@ -781,6 +790,18 @@ Click any line in the transcript above to seek the video player to that timestam
         return { ...prev, [currentConvId]: updatedList }
       })
     }
+  }
+
+  // Render loading state while verifying auth session or redirecting
+  if (isAuthLoading || !user) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#05070B] text-slate-400">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+          <p className="text-sm font-medium text-slate-400">Verifying session...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
