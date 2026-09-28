@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import {
   X,
   User,
@@ -17,6 +18,7 @@ import {
   Moon,
   Laptop,
   Check,
+  LogOut,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -24,7 +26,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { UserMemory } from "@/types/memory"
 import { fetchMemoriesApi, addMemoryApi, deleteMemoryApi } from "@/lib/api/memory"
-import { useCurrentUser } from "@/hooks/use-auth"
+import { useCurrentUser, useLogout } from "@/hooks/use-auth"
 import { useAppearance, ACCENT_COLORS, AccentColor } from "@/components/providers/theme-provider"
 import { cn } from "@/lib/utils"
 
@@ -32,13 +34,36 @@ interface SettingsDialogProps {
   isOpen: boolean
   onClose: () => void
   onDeleteAllChats?: () => void
+  defaultTab?: TabType
 }
 
 type TabType = "appearance" | "account" | "memory" | "data" | "security"
 
-export function SettingsDialog({ isOpen, onClose, onDeleteAllChats }: SettingsDialogProps) {
-  const [activeTab, setActiveTab] = useState<TabType>("appearance")
+export function SettingsDialog({
+  isOpen,
+  onClose,
+  onDeleteAllChats,
+  defaultTab = "appearance",
+}: SettingsDialogProps) {
+  const router = useRouter()
+  const logoutMutation = useLogout()
+  const [activeTab, setActiveTab] = useState<TabType>(defaultTab)
   const { theme, setTheme, accentColor, setAccentColor, accentConfig } = useAppearance()
+
+  useEffect(() => {
+    if (isOpen && defaultTab) {
+      setActiveTab(defaultTab)
+    }
+  }, [isOpen, defaultTab])
+
+  const handleLogout = () => {
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => {
+        onClose()
+        router.replace("/")
+      },
+    })
+  }
 
   // Long-Term AI Memory state
   const [memories, setMemories] = useState<UserMemory[]>([])
@@ -386,12 +411,55 @@ export function SettingsDialog({ isOpen, onClose, onDeleteAllChats }: SettingsDi
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <h5 className="text-sm font-semibold text-slate-900 dark:text-white">{user?.email || "User Account"}</h5>
-                  <p className="text-xs text-slate-400">Connected Account</p>
+                <div className="flex-1 min-w-0">
+                  <h5 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                    {user?.email || "User Account"}
+                  </h5>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {user?.created_at
+                      ? `Member since ${new Date(user.created_at).toLocaleDateString(undefined, {
+                          month: "short",
+                          year: "numeric",
+                        })}`
+                      : "Connected Account"}
+                  </p>
                   <Badge className={cn("mt-1.5 text-[10px]", accentConfig.activeBg, accentConfig.activeBorder, accentConfig.activeText)}>
                     Pro Workspace Tier
                   </Badge>
+                </div>
+              </div>
+
+              {/* Session Management & Logout */}
+              <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] p-5 space-y-4">
+                <div>
+                  <h5 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                    <LogOut className="h-4 w-4 text-rose-500 dark:text-rose-400" />
+                    <span>Session Management</span>
+                  </h5>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Sign out of your Nexora AI account on this device.
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-slate-200 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Active Session</span>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Current browser on this device</p>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    onClick={handleLogout}
+                    disabled={logoutMutation.isPending}
+                    className="flex items-center gap-2 border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/50 hover:text-rose-700 dark:hover:text-rose-300 rounded-xl px-4 py-2 text-xs font-semibold cursor-pointer transition-colors shadow-xs"
+                  >
+                    {logoutMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-rose-500" />
+                    ) : (
+                      <LogOut className="h-4 w-4" />
+                    )}
+                    <span>{logoutMutation.isPending ? "Signing out..." : "Log Out"}</span>
+                  </Button>
                 </div>
               </div>
             </div>

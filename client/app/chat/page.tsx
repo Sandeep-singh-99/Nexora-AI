@@ -121,7 +121,16 @@ export default function ChatPage() {
       setIsSidebarCollapsed((prev) => !prev)
     }
   }
+
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false)
+  const [settingsDefaultTab, setSettingsDefaultTab] = useState<"appearance" | "account" | "memory" | "data" | "security">("appearance")
+
+  const handleOpenSettings = (tab?: "appearance" | "account" | "memory" | "data" | "security") => {
+    if (tab) {
+      setSettingsDefaultTab(tab)
+    }
+    setIsSettingsOpen(true)
+  }
   const [isDocumentsOpen, setIsDocumentsOpen] = useState<boolean>(false)
   const [documents, setDocuments] = useState<UserDocument[]>([])
   const [activeDocument, setActiveDocument] = useState<UserDocument | null>(null)
@@ -815,7 +824,7 @@ Click any line in the transcript above to seek the video player to that timestam
         onDeleteConversation={handleDeleteConversation}
         onRenameConversation={handleRenameConversation}
         onTogglePinConversation={handleTogglePinConversation}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenSettings={handleOpenSettings}
         isOpenMobile={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
         isCollapsed={isSidebarCollapsed}
@@ -950,6 +959,7 @@ Click any line in the transcript above to seek the video player to that timestam
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         onDeleteAllChats={handleDeleteAllConversations}
+        defaultTab={settingsDefaultTab}
       />
 
       {/* Document Knowledge Base / Agentic RAG Dialog */}

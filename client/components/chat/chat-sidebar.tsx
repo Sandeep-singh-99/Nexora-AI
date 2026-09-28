@@ -24,7 +24,7 @@ export interface ChatSidebarProps {
   onDeleteConversation: (id: string) => void
   onRenameConversation?: (id: string, newTitle: string) => void
   onTogglePinConversation?: (id: string, isPinned: boolean) => void
-  onOpenSettings?: () => void
+  onOpenSettings?: (tab?: "appearance" | "account" | "memory" | "data" | "security") => void
   isOpenMobile?: boolean
   onCloseMobile?: () => void
   isCollapsed?: boolean
@@ -230,7 +230,11 @@ export function SidebarContent({
 
       {/* User Footer Profile & Settings */}
       <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2.5 overflow-hidden">
+        <div
+          onClick={() => onOpenSettings?.("account")}
+          className="flex items-center gap-2.5 overflow-hidden cursor-pointer rounded-xl p-1 -m-1 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+          title="Account & Session Settings"
+        >
           <Avatar className={cn("h-8 w-8 shrink-0 border", accentConfig.badgeBg, accentConfig.activeBorder)}>
             <AvatarFallback className={cn("text-xs font-bold bg-transparent", accentConfig.activeText)}>
               {userInitials}
@@ -248,7 +252,7 @@ export function SidebarContent({
           <Button
             variant="ghost"
             size="icon"
-            onClick={onOpenSettings}
+            onClick={() => onOpenSettings?.()}
             className="h-8 w-8 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/10 transition-colors cursor-pointer"
             aria-label="Settings"
           >
