@@ -6,10 +6,34 @@ from fastapi import HTTPException, status
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from pydantic import BaseModel, Field
 from app.models.chat_memory import UserMemory
 from app.core.config import settings
+from app.core.database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
+
+
+class ExtractedPreference(BaseModel):
+    memory_text: str = Field(
+        description="A concise, third-person declarative statement about the user's persistent preference, tech stack, habits, or personal facts (e.g. 'User prefers TypeScript with Next.js App Router')."
+    )
+    category: str = Field(
+        default="preference",
+        description="Category such as 'preference', 'technical_stack', 'work_context', 'personal', or 'general'."
+    )
+    confidence_score: float = Field(
+        default=1.0,
+        description="Confidence score between 0.0 and 1.0 indicating certainty of persistence."
+    )
+
+
+class PreferenceExtractionResult(BaseModel):
+    preferences: List[ExtractedPreference] = Field(
+        default_factory=list,
+        description="List of persistent user preferences or durable facts extracted from the message. Returns an empty list if none are mentioned."
+    )
+
 
 # Lazy initialized embedding model
 _embedding_model = None
@@ -143,32 +167,101 @@ class MemoryService:
         return True
 
     @staticmethod
-    async def extract_and_save_memories_from_text(
-        db: AsyncSession,
+    async def extract_and_save_preferences_task(
         user_id: UUID,
         user_text: str,
-    ):
+        db: Optional[AsyncSession] = None,
+    ) -> List[UserMemory]:
         """
-        Background task to extract facts from user message and store them into UserMemory.
-        Recognizes preference phrases like 'I use', 'I am', 'my favorite', 'I like', 'I work with'.
+        Background task to extract persistent user preferences (e.g. 'User prefers TypeScript with Next.js App Router')
+        using an LLM structured parser and save them into UserMemory via pgvector.
         """
-        user_text_lower = user_text.lower().strip()
-        
-        # Simple extraction triggers
-        memory_triggers = ["i use ", "i am ", "my name is ", "i work on ", "i prefer ", "i like ", "my stack is "]
-        
-        for trigger in memory_triggers:
-            if trigger in user_text_lower:
-                # Extract candidate memory text
-                memory_candidate = user_text.strip()
-                if len(memory_candidate) > 10 and len(memory_candidate) < 300:
-                    # Check if similar memory already exists
-                    existing = await MemoryService.get_relevant_memories(db, user_id, memory_candidate, limit=1)
-                    if not existing:
-                        await MemoryService.add_memory(
-                            db=db,
-                            user_id=user_id,
-                            memory_text=memory_candidate,
-                            category="user_preference",
-                        )
-                break
+        user_text_clean = user_text.strip() if user_text else ""
+        if not user_text_clean or len(user_text_clean) < 10:
+            return []
+
+        lower_text = user_text_clean.lower()
+        if lower_text in {"hi", "hello", "hey", "thanks", "thank you", "bye", "ok", "okay"}:
+            return []
+
+        async def _do_extraction(session: AsyncSession) -> List[UserMemory]:
+            try:
+                from app.ai.core.llm import get_llm
+                llm = get_llm("groq")
+                structured_llm = llm.with_structured_output(PreferenceExtractionResult)
+            except Exception as e:
+                logger.warning("Could not initialize LLM for preference extraction: %s", e)
+                return []
+
+            extraction_prompt = (
+                "You are an expert user-preference extraction engine for an AI assistant.\n"
+                "Analyze the user message and extract any durable user preferences, tech stack choices, habits, "
+                "work roles, or personal facts.\n\n"
+                "CRITICAL RULES:\n"
+                "1. Only extract persistent, reusable preferences or facts about the user (e.g., tech stacks, coding styles, roles, frameworks, languages).\n"
+                "2. Do NOT extract ephemeral requests, one-time questions, bug reports, or task instructions (e.g., 'fix this bug', 'summarize this text', 'write a function').\n"
+                "3. Format each extracted memory as a concise, third-person declarative statement starting with 'User...' (e.g., 'User prefers TypeScript with Next.js App Router').\n"
+                "4. If no durable preferences or facts are mentioned, return an empty list.\n\n"
+                f"User Message: {user_text_clean}"
+            )
+
+            try:
+                parsed: PreferenceExtractionResult = await structured_llm.ainvoke(extraction_prompt)
+            except Exception as e:
+                logger.warning("Failed LLM preference extraction invoke: %s", e)
+                return []
+
+            if not parsed or not parsed.preferences:
+                return []
+
+            saved_memories: List[UserMemory] = []
+            for item in parsed.preferences:
+                fact = item.memory_text.strip()
+                if not fact or len(fact) < 5:
+                    continue
+
+                try:
+                    # Check for duplicate/near-identical memory in pgvector
+                    existing = await MemoryService.get_relevant_memories(
+                        db=session,
+                        user_id=user_id,
+                        query_text=fact,
+                        limit=1,
+                    )
+                    if existing and existing[0].memory_text.lower().strip() == fact.lower().strip():
+                        logger.debug("Preference already recorded: %s", fact)
+                        continue
+
+                    new_mem = await MemoryService.add_memory(
+                        db=session,
+                        user_id=user_id,
+                        memory_text=fact,
+                        category=item.category or "preference",
+                        confidence_score=item.confidence_score or 1.0,
+                    )
+                    saved_memories.append(new_mem)
+                    logger.info("Saved persistent user preference for user %s: '%s'", user_id, fact)
+                except Exception as e:
+                    logger.warning("Error saving extracted memory '%s': %s", fact, e)
+
+            return saved_memories
+
+        if db is not None:
+            return await _do_extraction(db)
+        else:
+            async with AsyncSessionLocal() as session:
+                return await _do_extraction(session)
+
+    @staticmethod
+    async def extract_and_save_memories_from_text(
+        db: Optional[AsyncSession],
+        user_id: UUID,
+        user_text: str,
+    ) -> List[UserMemory]:
+        """Backward-compatible wrapper routing to extract_and_save_preferences_task."""
+        return await MemoryService.extract_and_save_preferences_task(
+            user_id=user_id,
+            user_text=user_text,
+            db=db,
+        )
+

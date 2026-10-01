@@ -1,10 +1,17 @@
+import sys
+import asyncio
+
+# Psycopg async operations on Windows require the WindowsSelectorEventLoopPolicy
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.api import app_router
 from app.core.config import settings
-from app.core.database import init_db
+from app.core.database import init_db, close_pg_pool
 from app.core.redis_client import init_redis, close_redis
 from app.dependencies.auth import verify_csrf_protection
 
@@ -21,11 +28,19 @@ async def lifespan(app: FastAPI):
             "FATAL: A strong, unique JWT_SECRET_KEY (min 32 characters) must be configured in production!"
         )
 
-    # Perform startup database and Redis initialization
+    # Perform startup database, Redis, and checkpointer initialization
     await init_db()
     await init_redis()
+    try:
+        from app.ai.graph import init_graph_checkpointer
+        await init_graph_checkpointer()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Distributed checkpointer eager init warning: %s", e)
+
     yield
     # Clean shutdown
+    await close_pg_pool()
     await close_redis()
 
 

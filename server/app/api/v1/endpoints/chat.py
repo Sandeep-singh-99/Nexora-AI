@@ -1,6 +1,6 @@
 from typing import List, Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -17,6 +17,7 @@ from app.schemas.chat import (
     TitleGenerateResponse,
 )
 from app.services.chat_service import ChatService
+from app.services.memory_service import MemoryService
 from app.ai.title_generator import generate_chatgpt_title
 from app.core.rate_limit import rate_limit_ai
 from app.core.redis_cache import get_cache, set_cache, invalidate_chat_cache
@@ -245,6 +246,7 @@ async def get_messages(
 async def add_message(
     conversation_id: UUID,
     payload: ChatMessageRequest,
+    background_tasks: BackgroundTasks,
     role: str = "user",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -257,7 +259,15 @@ async def add_message(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Conversation not found or access denied.",
         )
-    
+
+    # Fire background task to extract user preferences if user message
+    if role == "user":
+        background_tasks.add_task(
+            MemoryService.extract_and_save_preferences_task,
+            user_id=current_user.id,
+            user_text=payload.content,
+        )
+
     message = await ChatService.add_message(
         db=db,
         conversation_id=conversation_id,
@@ -267,3 +277,4 @@ async def add_message(
     # Invalidate caches so next GET returns new message immediately
     await invalidate_chat_cache(conversation_id=conversation_id, user_id=current_user.id)
     return message
+

@@ -5,7 +5,7 @@ import uuid
 from urllib.parse import urlparse
 from uuid import UUID
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +18,7 @@ from app.models.auth import User
 from app.models.chat_memory import Conversation
 from app.schemas.ai import ChatRequest, ChatResponse, DeleteConversationResponse
 from app.services.chat_service import ChatService
+from app.services.memory_service import MemoryService
 from app.ai.graph import ai_graph, clear_thread_memory, memory
 from app.ai.guardrails.input_filter import validate_input, AbuseFilterError
 from app.ai.rag.vector_store import DocumentVectorStore
@@ -214,6 +215,7 @@ async def event_generator(
             # 1. Node / Agent Execution Status Updates
             if kind == "on_chain_start" and name in [
                 "input_guardrail",
+                "memory_retrieval",
                 "router",
                 "chat_agent",
                 "coding_agent",
@@ -224,6 +226,7 @@ async def event_generator(
                 if name != "output_guardrail":
                     agent_metadata = {
                         "input_guardrail": ("Safety Guardrail", "Evaluating safety policies..."),
+                        "memory_retrieval": ("Memory Context", "Recalling personal preferences..."),
                         "router": ("Intent Router", "Analyzing request and assigning agent..."),
                         "chat_agent": ("General Assistant", "Generating response..."),
                         "coding_agent": ("Coding Specialist", "Architecting & writing code..."),
@@ -414,6 +417,7 @@ async def get_langsmith_status():
 async def chat_stream(
     request_data: ChatRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """SSE Streaming Endpoint supporting Cancellation, Guardrails, Tavily Search, Thinking, and Tokens."""
@@ -421,6 +425,14 @@ async def chat_stream(
         validate_input(request_data.message)
         thread_id = request_data.thread_id or f"session_{uuid.uuid4()}"
         user_id = str(current_user.id) if current_user else "anonymous"
+
+        # Fire background task on every conversation turn to extract new persistent preferences
+        if current_user:
+            background_tasks.add_task(
+                MemoryService.extract_and_save_preferences_task,
+                user_id=current_user.id,
+                user_text=request_data.message,
+            )
 
         return StreamingResponse(
             event_generator(
@@ -436,6 +448,7 @@ async def chat_stream(
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",
             },
+            background=background_tasks,
         )
     except AbuseFilterError as e:
         raise HTTPException(
@@ -453,11 +466,20 @@ async def chat_stream(
 @router.post("/chat", response_model=ChatResponse, dependencies=[Depends(rate_limit_ai)])
 async def chat(
     request: ChatRequest,
+    background_tasks: BackgroundTasks,
     current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """Standard non-streaming JSON endpoint with pre-flight and graph guardrails."""
     try:
         validate_input(request.message)
+
+        # Fire background task on every conversation turn to extract new persistent preferences
+        if current_user:
+            background_tasks.add_task(
+                MemoryService.extract_and_save_preferences_task,
+                user_id=current_user.id,
+                user_text=request.message,
+            )
 
         thread_id = request.thread_id or f"session_{uuid.uuid4()}"
         user_id = str(current_user.id) if current_user else "anonymous"
@@ -563,7 +585,7 @@ async def delete_ai_chat_conversation(
                 await invalidate_chat_cache(conversation_id=parsed_uuid, user_id=current_user.id)
             except Exception:
                 pass
-        elif current_user and target_id not in getattr(memory, "storage", {}):
+        elif current_user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Conversation not found",

@@ -9,6 +9,7 @@ class AgentState(TypedDict):
     next_step: Optional[str]
     is_blocked: Optional[bool]
     block_reason: Optional[str]
+    user_memories: Optional[list[str]]
 
 
 def count_tokens(messages: Sequence[BaseMessage]) -> int:
