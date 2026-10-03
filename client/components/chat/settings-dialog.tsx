@@ -84,6 +84,8 @@ export function SettingsDialog({
           "relative z-50 flex overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0A0F18] shadow-2xl animate-in zoom-in-95 duration-200 text-slate-800 dark:text-slate-200 transition-all",
           isMemoryFullscreen && activeTab === "memory"
             ? "w-[96vw] h-[92vh] max-w-7xl"
+            : activeTab === "memory"
+            ? "h-[740px] max-h-[92vh] w-full max-w-5xl"
             : "h-[640px] w-full max-w-4xl"
         )}
       >
@@ -97,7 +99,12 @@ export function SettingsDialog({
         </button>
 
         {/* Sidebar Navigation */}
-        <aside className="w-56 shrink-0 border-r border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#05070B] p-4 flex flex-col justify-between">
+        <aside
+          className={cn(
+            "w-56 shrink-0 border-r border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#05070B] p-4 flex flex-col justify-between transition-all",
+            isMemoryFullscreen && activeTab === "memory" && "hidden"
+          )}
+        >
           <div>
             <div className="flex items-center gap-2 mb-6 px-2">
               <div
@@ -193,7 +200,16 @@ export function SettingsDialog({
         </aside>
 
         {/* Tab Content Panel */}
-        <main className="flex-1 overflow-y-auto p-6 bg-white dark:bg-[#0A0F18]">
+        <main
+          className={cn(
+            "flex-1 bg-white dark:bg-[#0A0F18] transition-all min-h-0",
+            isMemoryFullscreen && activeTab === "memory"
+              ? "p-2 overflow-hidden flex flex-col"
+              : activeTab === "memory"
+              ? "p-4 overflow-hidden flex flex-col"
+              : "p-6 overflow-y-auto"
+          )}
+        >
           {/* TAB: APPEARANCE */}
           {activeTab === "appearance" && (
             <div className="space-y-6 animate-in fade-in-0 duration-150">
