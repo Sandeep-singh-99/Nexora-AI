@@ -286,7 +286,7 @@ export function MemoryManagementView({
 
       {/* VIEW: GRAPH */}
       {viewMode === "graph" ? (
-        <div className="flex-1 h-full min-h-[520px] w-full pt-2 flex flex-col overflow-hidden">
+        <div className="flex-1 h-full min-h-0 w-full pt-3 flex flex-col overflow-hidden">
           <KnowledgeGraphView
             isFullscreen={isFullscreen}
             onToggleFullscreen={onToggleFullscreen}

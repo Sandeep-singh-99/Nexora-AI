@@ -84,8 +84,6 @@ export function SettingsDialog({
           "relative z-50 flex overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0A0F18] shadow-2xl animate-in zoom-in-95 duration-200 text-slate-800 dark:text-slate-200 transition-all",
           isMemoryFullscreen && activeTab === "memory"
             ? "w-[96vw] h-[92vh] max-w-7xl"
-            : activeTab === "memory"
-            ? "h-[740px] max-h-[92vh] w-full max-w-5xl"
             : "h-[640px] w-full max-w-4xl"
         )}
       >
@@ -206,7 +204,7 @@ export function SettingsDialog({
             isMemoryFullscreen && activeTab === "memory"
               ? "p-2 overflow-hidden flex flex-col"
               : activeTab === "memory"
-              ? "p-4 overflow-hidden flex flex-col"
+              ? "p-6 overflow-hidden flex flex-col"
               : "p-6 overflow-y-auto"
           )}
         >
