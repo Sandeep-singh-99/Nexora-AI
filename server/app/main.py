@@ -10,6 +10,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.api import app_router
+from app.api.v1.endpoints.health import router as health_router
 from app.core.config import settings
 from app.core.database import init_db, close_pg_pool
 from app.core.redis_client import init_redis, close_redis
@@ -79,6 +80,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Health check at root level (/health)
+app.include_router(health_router)
 
 app.include_router(app_router, prefix="/api/v1", dependencies=[Depends(verify_csrf_protection)])
 
