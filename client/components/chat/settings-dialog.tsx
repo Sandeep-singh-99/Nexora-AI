@@ -24,10 +24,9 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { UserMemory } from "@/types/memory"
-import { fetchMemoriesApi, addMemoryApi, deleteMemoryApi } from "@/lib/api/memory"
 import { useCurrentUser, useLogout } from "@/hooks/use-auth"
 import { useAppearance, ACCENT_COLORS, AccentColor } from "@/components/providers/theme-provider"
+import { MemoryManagementView } from "./memory-management-view"
 import { cn } from "@/lib/utils"
 
 interface SettingsDialogProps {
@@ -48,6 +47,7 @@ export function SettingsDialog({
   const router = useRouter()
   const logoutMutation = useLogout()
   const [activeTab, setActiveTab] = useState<TabType>(defaultTab)
+  const [isMemoryFullscreen, setIsMemoryFullscreen] = useState(false)
   const { theme, setTheme, accentColor, setAccentColor, accentConfig } = useAppearance()
 
   useEffect(() => {
@@ -65,56 +65,8 @@ export function SettingsDialog({
     })
   }
 
-  // Long-Term AI Memory state
-  const [memories, setMemories] = useState<UserMemory[]>([])
-  const [isLoadingMemories, setIsLoadingMemories] = useState(false)
-  const [newMemoryText, setNewMemoryText] = useState("")
-  const [isAddingMemory, setIsAddingMemory] = useState(false)
-
   const { data: user } = useCurrentUser()
   const userInitials = user?.email ? user.email.slice(0, 2).toUpperCase() : "US"
-
-  useEffect(() => {
-    if (isOpen && activeTab === "memory") {
-      loadMemories()
-    }
-  }, [isOpen, activeTab])
-
-  const loadMemories = async () => {
-    setIsLoadingMemories(true)
-    try {
-      const data = await fetchMemoriesApi()
-      setMemories(data)
-    } catch (err) {
-      console.error("Failed to load memories:", err)
-    } finally {
-      setIsLoadingMemories(false)
-    }
-  }
-
-  const handleAddMemory = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newMemoryText.trim()) return
-    setIsAddingMemory(true)
-    try {
-      const created = await addMemoryApi({ memory_text: newMemoryText.trim() })
-      setMemories((prev) => [created, ...prev])
-      setNewMemoryText("")
-    } catch (err) {
-      console.error("Failed to add memory:", err)
-    } finally {
-      setIsAddingMemory(false)
-    }
-  }
-
-  const handleDeleteMemory = async (id: string) => {
-    try {
-      await deleteMemoryApi(id)
-      setMemories((prev) => prev.filter((m) => m.id !== id))
-    } catch (err) {
-      console.error("Failed to delete memory:", err)
-    }
-  }
 
   if (!isOpen) return null
 
@@ -127,7 +79,14 @@ export function SettingsDialog({
       />
 
       {/* Dialog Box */}
-      <div className="relative z-50 flex h-[580px] w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0A0F18] shadow-2xl animate-in zoom-in-95 duration-200 text-slate-800 dark:text-slate-200">
+      <div
+        className={cn(
+          "relative z-50 flex overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0A0F18] shadow-2xl animate-in zoom-in-95 duration-200 text-slate-800 dark:text-slate-200 transition-all",
+          isMemoryFullscreen && activeTab === "memory"
+            ? "w-[96vw] h-[92vh] max-w-7xl"
+            : "h-[640px] w-full max-w-4xl"
+        )}
+      >
         {/* Modal Close X Button */}
         <button
           onClick={onClose}
@@ -179,7 +138,7 @@ export function SettingsDialog({
                 <span>Account</span>
               </button>
 
-              {/* AI Memory Tab */}
+              {/* AI Memory & Graph Tab */}
               <button
                 onClick={() => setActiveTab("memory")}
                 className={cn(
@@ -190,7 +149,12 @@ export function SettingsDialog({
                 )}
               >
                 <Brain className="h-4 w-4" />
-                <span>AI Memory</span>
+                <div className="flex items-center justify-between flex-1">
+                  <span>AI Memory</span>
+                  <Badge variant="outline" className="text-[9px] px-1 py-0 border-indigo-500/30 text-indigo-500 dark:text-indigo-400">
+                    Graph
+                  </Badge>
+                </div>
               </button>
 
               {/* Data controls Tab */}
@@ -465,78 +429,13 @@ export function SettingsDialog({
             </div>
           )}
 
-          {/* TAB: LONG-TERM AI MEMORY */}
+          {/* TAB: LONG-TERM AI MEMORY & KNOWLEDGE GRAPH */}
           {activeTab === "memory" && (
-            <div className="space-y-6 animate-in fade-in-0 duration-150">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Brain className={cn("h-5 w-5", accentConfig.activeText)} />
-                  <h4 className="text-lg font-bold text-slate-900 dark:text-white">AI Personalization & Long-Term Memory</h4>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Nexora automatically remembers key facts, preferences, and tech stacks across conversations using Neon DB vector embeddings.
-                </p>
-              </div>
-
-              {/* Add Memory Form */}
-              <form onSubmit={handleAddMemory} className="flex gap-2">
-                <Input
-                  value={newMemoryText}
-                  onChange={(e) => setNewMemoryText(e.target.value)}
-                  placeholder="Remember something manually (e.g. 'I prefer writing FastAPI in Python')..."
-                  className="bg-slate-50 dark:bg-white/[0.03] border-slate-200 dark:border-white/10 text-xs placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-900 dark:text-slate-100"
-                />
-                <Button
-                  type="submit"
-                  disabled={isAddingMemory || !newMemoryText.trim()}
-                  className={cn("text-white font-semibold text-xs shrink-0 bg-gradient-to-r cursor-pointer", accentConfig.gradient)}
-                >
-                  {isAddingMemory ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
-                  Add Fact
-                </Button>
-              </form>
-
-              {/* Memory List */}
-              <div className="space-y-2">
-                <h5 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Stored Facts ({memories.length})</h5>
-
-                {isLoadingMemories ? (
-                  <div className="flex items-center justify-center py-8 text-slate-500 gap-2 text-xs">
-                    <Loader2 className={cn("h-4 w-4 animate-spin", accentConfig.activeText)} />
-                    <span>Loading memory store from Neon pgvector...</span>
-                  </div>
-                ) : memories.length === 0 ? (
-                  <div className="rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.01] p-6 text-center text-xs text-slate-400">
-                    No memories stored yet. Nexora will automatically remember details as you chat, or you can add one above!
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
-                    {memories.map((mem) => (
-                      <div
-                        key={mem.id}
-                        className={cn(
-                          "flex items-center justify-between rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] p-3 text-xs transition-all",
-                          `hover:${accentConfig.activeBorder}`
-                        )}
-                      >
-                        <div className="flex items-start gap-2.5 overflow-hidden pr-2">
-                          <Badge className={cn("text-[10px] mt-0.5 shrink-0", accentConfig.activeBg, accentConfig.activeBorder, accentConfig.activeText)}>
-                            {mem.category}
-                          </Badge>
-                          <span className="text-slate-800 dark:text-slate-200 break-words font-medium">{mem.memory_text}</span>
-                        </div>
-                        <button
-                          onClick={() => handleDeleteMemory(mem.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0 cursor-pointer"
-                          title="Forget this memory"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div className="h-full flex flex-col animate-in fade-in-0 duration-150">
+              <MemoryManagementView
+                isFullscreen={isMemoryFullscreen}
+                onToggleFullscreen={() => setIsMemoryFullscreen(!isMemoryFullscreen)}
+              />
             </div>
           )}
 

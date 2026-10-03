@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import { ConversationSession } from "@/types/chat"
-import { Plus, Search, MessageSquare, Trash2, Edit3, Settings, Sparkles, MoreHorizontal, Loader2, Pin } from "lucide-react"
+import { Plus, Search, MessageSquare, Trash2, Edit3, Settings, Sparkles, MoreHorizontal, Loader2, Pin, Brain } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -248,17 +248,31 @@ export function SidebarContent({
           </div>
         </div>
 
-        <Tooltip content="Settings" side="top">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onOpenSettings?.()}
-            className="h-8 w-8 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/10 transition-colors cursor-pointer"
-            aria-label="Settings"
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-        </Tooltip>
+        <div className="flex items-center gap-1">
+          <Tooltip content="Knowledge Graph & Memory" side="top">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onOpenSettings?.("memory")}
+              className="h-8 w-8 rounded-xl text-slate-500 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 dark:hover:bg-indigo-500/20 transition-colors cursor-pointer"
+              aria-label="Knowledge Graph & Memory"
+            >
+              <Brain className="h-4 w-4" />
+            </Button>
+          </Tooltip>
+
+          <Tooltip content="Settings" side="top">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onOpenSettings?.()}
+              className="h-8 w-8 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              aria-label="Settings"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </Tooltip>
+        </div>
       </div>
     </div>
   )

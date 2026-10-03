@@ -1,17 +1,39 @@
+import re
 import uuid
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pydantic import BaseModel, Field
-from app.models.chat_memory import UserMemory
+from app.models.chat_memory import UserMemory, Conversation, utc_now
+from app.models.document import Document
+from app.models.auth import User
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
+
+STOP_WORDS = {
+    "about", "above", "after", "again", "against", "all", "also", "and", "any", "are", "because",
+    "been", "before", "being", "below", "between", "both", "but", "can", "cannot", "could", "did",
+    "does", "doing", "down", "during", "each", "few", "for", "from", "further", "had", "has", "have",
+    "having", "her", "here", "hers", "herself", "him", "himself", "his", "how", "into", "its", "itself",
+    "more", "most", "not", "only", "other", "our", "ours", "out", "over", "same", "should", "some",
+    "such", "than", "that", "the", "their", "theirs", "them", "themselves", "then", "there", "these",
+    "they", "this", "those", "through", "too", "under", "until", "very", "was", "were", "what", "when",
+    "where", "which", "while", "who", "whom", "why", "with", "would", "user", "prefers", "using", "uses",
+    "likes", "always", "never", "code", "file", "make", "want"
+}
+
+def extract_meaningful_tokens(text: str) -> set[str]:
+    """Extract significant keywords for personal knowledge graph linking."""
+    if not text:
+        return set()
+    words = re.findall(r'[a-zA-Z0-9_\-\.]{3,}', text.lower())
+    return {w.strip('.-_') for w in words if w.strip('.-_') not in STOP_WORDS and len(w.strip('.-_')) >= 3}
 
 
 class ExtractedPreference(BaseModel):
@@ -19,8 +41,8 @@ class ExtractedPreference(BaseModel):
         description="A concise, third-person declarative statement about the user's persistent preference, tech stack, habits, or personal facts (e.g. 'User prefers TypeScript with Next.js App Router')."
     )
     category: str = Field(
-        default="preference",
-        description="Category such as 'preference', 'technical_stack', 'work_context', 'personal', or 'general'."
+        default="tech_preference",
+        description="Category such as 'tech_preference', 'coding_convention', 'project', 'interest', or 'general'."
     )
     confidence_score: float = Field(
         default=1.0,
@@ -133,17 +155,314 @@ class MemoryService:
     async def get_all_user_memories(
         db: AsyncSession,
         user_id: UUID,
+        category: Optional[str] = None,
+        search: Optional[str] = None,
         limit: int = 100,
     ) -> List[UserMemory]:
-        """Fetch all long-term memories stored for a user."""
-        stmt = (
+        """Fetch all long-term memories stored for a user with category filtering and search."""
+        stmt = select(UserMemory).where(UserMemory.user_id == user_id)
+
+        if category and category.lower() != "all":
+            norm_cat = category.strip().lower().replace(" ", "_")
+            stmt = stmt.where(UserMemory.category.ilike(f"%{norm_cat}%"))
+
+        if search and search.strip():
+            stmt = stmt.where(UserMemory.memory_text.ilike(f"%{search.strip()}%"))
+
+        stmt = stmt.order_by(UserMemory.created_at.desc()).limit(limit)
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def update_memory(
+        db: AsyncSession,
+        memory_id: UUID,
+        user_id: UUID,
+        memory_text: Optional[str] = None,
+        category: Optional[str] = None,
+        confidence_score: Optional[float] = None,
+    ) -> UserMemory:
+        """Update a long-term memory entry, re-generating embeddings if text changed."""
+        stmt = select(UserMemory).where(
+            UserMemory.id == memory_id,
+            UserMemory.user_id == user_id,
+        )
+        result = await db.execute(stmt)
+        memory = result.scalar_one_or_none()
+
+        if not memory:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Memory entry not found")
+
+        if memory_text is not None:
+            clean_text = memory_text.strip()
+            if not clean_text:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Memory text cannot be empty")
+            memory.memory_text = clean_text
+            memory.embedding = get_text_embedding(clean_text)
+
+        if category is not None:
+            memory.category = category.strip().lower().replace(" ", "_")
+
+        if confidence_score is not None:
+            memory.confidence_score = max(0.0, min(1.0, float(confidence_score)))
+
+        memory.updated_at = utc_now()
+        await db.commit()
+        await db.refresh(memory)
+        return memory
+
+    @staticmethod
+    async def get_knowledge_graph(
+        db: AsyncSession,
+        user_id: UUID,
+    ) -> Dict[str, Any]:
+        """
+        Build an interactive Personal Knowledge Graph linking:
+        - Central user entity
+        - Learned concepts/facts categorized by interests, tech preferences, projects, coding conventions
+        - Uploaded documents (PDF, DOCX, transcripts)
+        - Chat threads
+        - Semantic and cross-entity relational edges
+        """
+        # Fetch user details
+        user_stmt = select(User).where(User.id == user_id)
+        user_result = await db.execute(user_stmt)
+        user_obj = user_result.scalar_one_or_none()
+        user_email = user_obj.email if user_obj else "User"
+        user_name = user_email.split("@")[0] if "@" in user_email else user_email
+
+        # Fetch memories
+        mem_stmt = (
             select(UserMemory)
             .where(UserMemory.user_id == user_id)
             .order_by(UserMemory.created_at.desc())
-            .limit(limit)
         )
-        result = await db.execute(stmt)
-        return list(result.scalars().all())
+        mem_res = await db.execute(mem_stmt)
+        memories = list(mem_res.scalars().all())
+
+        # Fetch uploaded documents
+        doc_stmt = (
+            select(Document)
+            .where(Document.user_id == user_id)
+            .order_by(Document.created_at.desc())
+        )
+        doc_res = await db.execute(doc_stmt)
+        documents = list(doc_res.scalars().all())
+
+        # Fetch conversations
+        conv_stmt = (
+            select(Conversation)
+            .where(Conversation.user_id == user_id)
+            .order_by(Conversation.updated_at.desc())
+            .limit(25)
+        )
+        conv_res = await db.execute(conv_stmt)
+        conversations = list(conv_res.scalars().all())
+
+        nodes: List[Dict[str, Any]] = []
+        edges: List[Dict[str, Any]] = []
+
+        # 1. Central User Node
+        user_node_id = f"user-{user_id}"
+        nodes.append({
+            "id": user_node_id,
+            "label": f"You ({user_name})",
+            "type": "user",
+            "category": "user",
+            "data": {
+                "id": str(user_id),
+                "name": user_name,
+                "email": user_email,
+                "memoriesCount": len(memories),
+                "documentsCount": len(documents),
+                "threadsCount": len(conversations),
+            },
+        })
+
+        # 2. Concept / Memory Nodes
+        mem_tokens: Dict[UUID, set[str]] = {}
+        for mem in memories:
+            cat = (mem.category or "general").lower().replace(" ", "_")
+            tokens = extract_meaningful_tokens(mem.memory_text)
+            mem_tokens[mem.id] = tokens
+
+            display_label = mem.memory_text
+            if len(display_label) > 48:
+                display_label = display_label[:45] + "..."
+
+            node_id = f"mem-{mem.id}"
+            nodes.append({
+                "id": node_id,
+                "label": display_label,
+                "type": "concept",
+                "category": cat,
+                "data": {
+                    "id": str(mem.id),
+                    "full_text": mem.memory_text,
+                    "category": cat,
+                    "confidence": mem.confidence_score,
+                    "created_at": mem.created_at.isoformat(),
+                },
+            })
+
+            # Base edge from User to Concept
+            edges.append({
+                "id": f"e-user-mem-{mem.id}",
+                "source": user_node_id,
+                "target": node_id,
+                "label": "knows",
+                "relationship": "user_concept",
+            })
+
+        # 3. Document Nodes
+        doc_tokens: Dict[UUID, set[str]] = {}
+        for doc in documents:
+            tokens = extract_meaningful_tokens(doc.filename)
+            doc_tokens[doc.id] = tokens
+
+            node_id = f"doc-{doc.id}"
+            nodes.append({
+                "id": node_id,
+                "label": doc.filename,
+                "type": "document",
+                "category": "document",
+                "data": {
+                    "id": str(doc.id),
+                    "filename": doc.filename,
+                    "file_type": doc.file_type,
+                    "file_size": doc.file_size_bytes,
+                    "total_pages": doc.total_pages,
+                    "total_chunks": doc.total_chunks,
+                    "created_at": doc.created_at.isoformat(),
+                },
+            })
+
+            # Base edge from User to Document
+            edges.append({
+                "id": f"e-user-doc-{doc.id}",
+                "source": user_node_id,
+                "target": node_id,
+                "label": "uploaded",
+                "relationship": "user_doc",
+            })
+
+        # 4. Chat Thread Nodes
+        conv_tokens: Dict[UUID, set[str]] = {}
+        for conv in conversations:
+            tokens = extract_meaningful_tokens(conv.title)
+            conv_tokens[conv.id] = tokens
+
+            node_id = f"thread-{conv.id}"
+            display_title = conv.title
+            if len(display_title) > 42:
+                display_title = display_title[:39] + "..."
+
+            nodes.append({
+                "id": node_id,
+                "label": display_title,
+                "type": "thread",
+                "category": "thread",
+                "data": {
+                    "id": str(conv.id),
+                    "title": conv.title,
+                    "is_pinned": conv.is_pinned,
+                    "created_at": conv.created_at.isoformat(),
+                    "updated_at": conv.updated_at.isoformat(),
+                },
+            })
+
+            # Base edge from User to Chat Thread
+            edges.append({
+                "id": f"e-user-thread-{conv.id}",
+                "source": user_node_id,
+                "target": node_id,
+                "label": "chatted",
+                "relationship": "user_thread",
+            })
+
+        # 5. Semantic Cross-Links: Documents <-> Concepts
+        for doc in documents:
+            dtoks = doc_tokens.get(doc.id, set())
+            for mem in memories:
+                mtoks = mem_tokens.get(mem.id, set())
+                common = dtoks.intersection(mtoks)
+                if common:
+                    sample = list(common)[:2]
+                    edges.append({
+                        "id": f"e-doc-{doc.id}-mem-{mem.id}",
+                        "source": f"doc-{doc.id}",
+                        "target": f"mem-{mem.id}",
+                        "label": f"relates ({', '.join(sample)})",
+                        "relationship": "doc_concept",
+                    })
+
+        # 6. Semantic Cross-Links: Chat Threads <-> Concepts
+        for conv in conversations:
+            ctoks = conv_tokens.get(conv.id, set())
+            for mem in memories:
+                mtoks = mem_tokens.get(mem.id, set())
+                common = ctoks.intersection(mtoks)
+                if common:
+                    sample = list(common)[:2]
+                    edges.append({
+                        "id": f"e-thread-{conv.id}-mem-{mem.id}",
+                        "source": f"thread-{conv.id}",
+                        "target": f"mem-{mem.id}",
+                        "label": f"discussed ({', '.join(sample)})",
+                        "relationship": "thread_concept",
+                    })
+
+        # 7. Semantic Cross-Links: Chat Threads <-> Documents
+        for conv in conversations:
+            ctoks = conv_tokens.get(conv.id, set())
+            for doc in documents:
+                dtoks = doc_tokens.get(doc.id, set())
+                common = ctoks.intersection(dtoks)
+                if common:
+                    edges.append({
+                        "id": f"e-thread-{conv.id}-doc-{doc.id}",
+                        "source": f"thread-{conv.id}",
+                        "target": f"doc-{doc.id}",
+                        "label": "references",
+                        "relationship": "thread_doc",
+                    })
+
+        # 8. Inter-concept associations (same category or >= 2 shared tokens)
+        for i, m1 in enumerate(memories):
+            t1 = mem_tokens.get(m1.id, set())
+            cat1 = (m1.category or "general").lower()
+            for m2 in memories[i + 1:]:
+                t2 = mem_tokens.get(m2.id, set())
+                cat2 = (m2.category or "general").lower()
+                common = t1.intersection(t2)
+                if len(common) >= 2 or (cat1 != "general" and cat1 == cat2 and common):
+                    edges.append({
+                        "id": f"e-mem-{m1.id}-mem-{m2.id}",
+                        "source": f"mem-{m1.id}",
+                        "target": f"mem-{m2.id}",
+                        "label": "related",
+                        "relationship": "concept_concept",
+                    })
+
+        stats = {
+            "total_memories": len(memories),
+            "tech_preferences": sum(1 for m in memories if "tech" in (m.category or "").lower()),
+            "coding_conventions": sum(
+                1 for m in memories if "convention" in (m.category or "").lower() or "coding" in (m.category or "").lower()
+            ),
+            "projects": sum(1 for m in memories if "project" in (m.category or "").lower()),
+            "interests": sum(1 for m in memories if "interest" in (m.category or "").lower()),
+            "documents": len(documents),
+            "threads": len(conversations),
+            "total_nodes": len(nodes),
+            "total_edges": len(edges),
+        }
+
+        return {
+            "nodes": nodes,
+            "edges": edges,
+            "stats": stats,
+        }
 
     @staticmethod
     async def delete_memory(
@@ -194,14 +513,19 @@ class MemoryService:
                 return []
 
             extraction_prompt = (
-                "You are an expert user-preference extraction engine for an AI assistant.\n"
-                "Analyze the user message and extract any durable user preferences, tech stack choices, habits, "
-                "work roles, or personal facts.\n\n"
+                "You are an expert user-preference and knowledge extraction engine for an AI assistant.\n"
+                "Analyze the user message and extract durable facts about the user across these 4 key categories:\n"
+                "1. 'tech_preference' (e.g. programming languages, frameworks, libraries, tools like Next.js, FastAPI, PostgreSQL, Tailwind)\n"
+                "2. 'coding_convention' (e.g. preferred design patterns, typing rules, testing habits, architectural styles)\n"
+                "3. 'project' (e.g. projects the user is building, current applications, milestones, client work)\n"
+                "4. 'interest' (e.g. areas of curiosity, domains like AI/ML, distributed systems, web dev)\n"
+                "5. 'general' (e.g. general personal preferences, communication styles, timezone)\n\n"
                 "CRITICAL RULES:\n"
-                "1. Only extract persistent, reusable preferences or facts about the user (e.g., tech stacks, coding styles, roles, frameworks, languages).\n"
-                "2. Do NOT extract ephemeral requests, one-time questions, bug reports, or task instructions (e.g., 'fix this bug', 'summarize this text', 'write a function').\n"
+                "1. Only extract persistent, reusable preferences, conventions, projects, or facts about the user.\n"
+                "2. Do NOT extract ephemeral requests, one-time questions, bug reports, or task instructions.\n"
                 "3. Format each extracted memory as a concise, third-person declarative statement starting with 'User...' (e.g., 'User prefers TypeScript with Next.js App Router').\n"
-                "4. If no durable preferences or facts are mentioned, return an empty list.\n\n"
+                "4. Assign the appropriate category: 'tech_preference', 'coding_convention', 'project', 'interest', or 'general'.\n"
+                "5. If no durable preferences or facts are mentioned, return an empty list.\n\n"
                 f"User Message: {user_text_clean}"
             )
 

@@ -12,6 +12,7 @@
     "@ai-sdk/react": "^4.0.100",
     "@base-ui/react": "^1.8.0",
     "@tanstack/react-query": "^5.102.8",
+    "@xyflow/react": "^12.12.0",
     "ai": "^7.0.97",
     "axios": "^1.20.0",
     "class-variance-authority": "^0.7.1",
