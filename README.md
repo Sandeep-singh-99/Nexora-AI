@@ -95,7 +95,7 @@ flowchart TD
         Groq["Groq Llama-3 Fast Inference"]
         Gemini["Google Gemini GenAI"]
         Tavily["Tavily Web Search API"]
-        HF["HuggingFace Embeddings\nsentence-transformers"]
+        Embeddings["Google GenAI Embeddings\n(768-dim)"]
         LangSmith["LangSmith Tracing & Telemetry"]
     end
 
@@ -232,7 +232,7 @@ flowchart LR
     end
 
     subgraph Embedding_Store ["3. Vector Storage"]
-        C1["HuggingFace Embeddings\nsentence-transformers (768-dim)"]
+        C1["Google GenAI Embeddings\n(768-dim)"]
         C2[("PostgreSQL\npgvector HNSW Index")]
     end
 
@@ -462,7 +462,7 @@ Nexora's backend emits structured `ui` events over the SSE stream that the Next.
 | **Document Processing & OCR** | `pypdf 6.19.0`, `python-docx 1.2.0`, `pytesseract 0.3.13`, `Pillow 12.3.0` |
 | **Math & Symbolic Engine** | [SymPy 1.13.0](https://www.sympy.org/), [SciPy 1.12.0](https://scipy.org/), [NumPy](https://numpy.org/) |
 | **Database & Vector Store** | [PostgreSQL](https://www.postgresql.org/) with [pgvector 0.5.0](https://github.com/pgvector/pgvector), [SQLAlchemy 2.0.52 Async](https://www.sqlalchemy.org/), [Alembic 1.19.2](https://alembic.sqlalchemy.org/) |
-| **Vector Embeddings** | `sentence-transformers 6.0.1`, `langchain-huggingface 1.2.2` (768-dimensional embeddings) |
+| **Vector Embeddings** | [Google GenAI Embeddings](https://ai.google.dev/) (`gemini-embedding-2`, 768-dimensional embeddings) |
 | **Security & Cryptography** | `argon2-cffi 23.1.0`, `pyjwt 2.8.0`, Double-Submit CSRF, Secure HTTP-only Cookies |
 | **Observability** | [LangSmith](https://smith.langchain.com/) (`langsmith 0.1.0`) |
 | **Package & Dev Tooling** | [`uv`](https://github.com/astral-sh/uv), [`pnpm 11.21.0`](https://pnpm.io/), [Docker](https://www.docker.com/) & Docker Compose |
@@ -621,8 +621,7 @@ GOOGLE_API_KEY=AIzaSy...
 GEMINI_MODEL=gemini-2.5-flash
 
 # Embeddings & Web Search
-HUGGINGFACE_API_KEY=hf_...
-EMBEDDING_MODEL=sentence-transformers/all-mpnet-base-v2
+GOOGLE_EMBEDDING_MODEL=gemini-embedding-2
 TAVILY_API_KEY=tvly-...
 
 # Observability (Optional)

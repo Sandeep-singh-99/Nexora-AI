@@ -12,19 +12,14 @@ TARGET_DIM = 768
 
 
 def _get_or_create_model():
-    """Lazily load sentence-transformers HuggingFace model."""
+    """Lazily load embeddings model."""
     global _embedding_model
     if _embedding_model is None:
         try:
-            from sentence_transformers import SentenceTransformer
-            model_name = settings.EMBEDDING_MODEL or "sentence-transformers/all-mpnet-base-v2"
-            try:
-                _embedding_model = SentenceTransformer(model_name)
-            except Exception as e:
-                logger.warning(f"Could not load embedding model {model_name}, falling back to all-MiniLM-L6-v2: {e}")
-                _embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+            from app.ai.core.embedding import get_embeddings
+            _embedding_model = get_embeddings()
         except Exception as err:
-            logger.error(f"Failed to initialize SentenceTransformer: {err}")
+            logger.error(f"Failed to initialize embedding model: {err}")
             _embedding_model = None
     return _embedding_model
 
@@ -55,7 +50,10 @@ def get_embedding_vector(text: str) -> List[float]:
     model = _get_or_create_model()
     if model is not None:
         try:
-            raw_vec = model.encode(clean_text).tolist()
+            if hasattr(model, "embed_query"):
+                raw_vec = model.embed_query(clean_text)
+            else:
+                raw_vec = model.encode(clean_text).tolist()
             return _pad_or_truncate_vector(raw_vec)
         except Exception as e:
             logger.warning(f"Error computing embedding: {e}; using fallback vector.")
@@ -72,7 +70,10 @@ def get_batch_embedding_vectors(texts: List[str]) -> List[List[float]]:
     if model is not None:
         try:
             # Batch encode for high efficiency
-            raw_vectors = model.encode(texts, show_progress_bar=False).tolist()
+            if hasattr(model, "embed_documents"):
+                raw_vectors = model.embed_documents(texts)
+            else:
+                raw_vectors = model.encode(texts, show_progress_bar=False).tolist()
             return [_pad_or_truncate_vector(v) for v in raw_vectors]
         except Exception as e:
             logger.warning(f"Error computing batch embeddings: {e}; falling back to individual generation.")

@@ -31,12 +31,13 @@ class Settings:
 
     GEMINI_API_KEY: str = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GOOGLE_EMBEDDING_MODEL: str = os.getenv("GOOGLE_EMBEDDING_MODEL", "gemini-embedding-2")
 
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     GROQ_MODEL: str = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
-    HUGGINGFACE_API_KEY: str = os.getenv("HUGGINGFACE_API_KEY", "")
-    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "")
+    OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+    OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL", "qwen/qwen3.8-27b:free")
 
     TAVILY_SEARCH: str = os.getenv("TAVILY_API_KEY", "")
 

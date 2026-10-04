@@ -379,7 +379,7 @@ export function DocumentsDialog({
             <Shield className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
             <p>
               <strong className="text-slate-300">Zero Permanent Storage:</strong> Original files are
-              never saved to disk. Extracted text chunks and HuggingFace embeddings are stored in your
+              never saved to disk. Extracted text chunks and vector embeddings are stored in your
               isolated vector space and discarded immediately upon deletion.
             </p>
           </div>

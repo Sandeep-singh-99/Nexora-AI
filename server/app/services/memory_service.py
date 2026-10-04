@@ -57,46 +57,13 @@ class PreferenceExtractionResult(BaseModel):
     )
 
 
-# Lazy initialized embedding model
-_embedding_model = None
-
 def get_text_embedding(text: str) -> List[float]:
     """
     Generate a 768-dimensional float vector embedding for the given text.
-    Uses sentence-transformers if available, with robust zero-padding/truncation to 768 dimensions.
+    Uses unified embedding model with robust zero-padding/truncation to 768 dimensions.
     """
-    global _embedding_model
-    target_dim = 768
-
-    try:
-        if _embedding_model is None:
-            from sentence_transformers import SentenceTransformer
-            # Load a standard, fast 768-dim or 384-dim model
-            model_name = settings.EMBEDDING_MODEL or "sentence-transformers/all-mpnet-base-v2"
-            try:
-                _embedding_model = SentenceTransformer(model_name)
-            except Exception as e:
-                logger.warning(f"Could not load custom embedding model {model_name}, falling back to all-MiniLM-L6-v2: {e}")
-                _embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-
-        raw_vector = _embedding_model.encode(text).tolist()
-        
-        # Adjust dimensions to match schema Vector(768)
-        if len(raw_vector) < target_dim:
-            raw_vector = raw_vector + [0.0] * (target_dim - len(raw_vector))
-        elif len(raw_vector) > target_dim:
-            raw_vector = raw_vector[:target_dim]
-
-        return raw_vector
-    except Exception as err:
-        logger.error(f"Error generating embedding: {err}")
-        # Deterministic fallback pseudo-vector if model fails
-        import hashlib
-        hash_bytes = hashlib.sha256(text.encode('utf-8')).digest()
-        fallback = [((b / 255.0) - 0.5) for b in hash_bytes]
-        # Repeat to fill 768
-        full_fallback = (fallback * (target_dim // len(fallback) + 1))[:target_dim]
-        return full_fallback
+    from app.ai.rag.embeddings import get_embedding_vector
+    return get_embedding_vector(text)
 
 
 class MemoryService:
