@@ -402,7 +402,18 @@ async def event_generator(
         return
     except Exception as e:
         logger.exception("Streaming error: %s", e)
-        err_payload = json.dumps({"type": "error", "message": str(e)})
+        is_gemini_quota = (
+            ("gemini" in str(e).lower() and ("quota" in str(e).lower() or "429" in str(e).lower() or "resource_exhausted" in str(e).lower()))
+            or "gemini_quota_exceeded" in str(e).lower()
+        )
+        if is_gemini_quota:
+            err_payload = json.dumps({
+                "type": "error",
+                "message": "Google Gemini embedding token quota exceeded. Please wait a moment or check your Gemini API quota.",
+                "code": "GEMINI_QUOTA_EXCEEDED",
+            })
+        else:
+            err_payload = json.dumps({"type": "error", "message": str(e)})
         yield f"data: {err_payload}\n\n"
 
 

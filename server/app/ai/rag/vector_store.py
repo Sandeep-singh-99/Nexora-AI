@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.document import Document, DocumentChunk
 from app.ai.rag.loaders import load_document
 from app.ai.rag.chunking import chunk_document_items
-from app.ai.rag.embeddings import aget_embedding_vector, aget_batch_embedding_vectors
+from app.ai.rag.embeddings import aget_embedding_vector, aget_batch_embedding_vectors, GeminiQuotaExceededError
 from app.ai.rag.youtube_loader import fetch_youtube_video_data, YouTubeVideoData
 
 logger = logging.getLogger(__name__)
@@ -86,7 +86,16 @@ class DocumentVectorStore:
 
         # Step 3: Generate batch embeddings
         texts_to_embed = [c.content for c in chunk_items]
-        embeddings = await aget_batch_embedding_vectors(texts_to_embed)
+        try:
+            embeddings = await aget_batch_embedding_vectors(texts_to_embed)
+        except GeminiQuotaExceededError as qe:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "error_code": "GEMINI_QUOTA_EXCEEDED",
+                    "message": "Google Gemini embedding token quota exceeded. Please wait a moment or check your Gemini API quota."
+                }
+            ) from qe
 
         # Step 4: Persist metadata and chunks in DB
         doc_record = Document(
@@ -151,7 +160,16 @@ class DocumentVectorStore:
 
         doc_id = uuid.uuid4()
         texts_to_embed = [c.content for c in yt_data.chunks]
-        embeddings = await aget_batch_embedding_vectors(texts_to_embed)
+        try:
+            embeddings = await aget_batch_embedding_vectors(texts_to_embed)
+        except GeminiQuotaExceededError as qe:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "error_code": "GEMINI_QUOTA_EXCEEDED",
+                    "message": "Google Gemini embedding token quota exceeded. Please wait a moment or check your Gemini API quota."
+                }
+            ) from qe
 
         filename = f"YouTube: {yt_data.title}"
         doc_record = Document(
@@ -259,7 +277,16 @@ class DocumentVectorStore:
             if len(user_docs) == 1:
                 document_id = user_docs[0].id
 
-        query_vector = await aget_embedding_vector(clean_query)
+        try:
+            query_vector = await aget_embedding_vector(clean_query)
+        except GeminiQuotaExceededError as qe:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "error_code": "GEMINI_QUOTA_EXCEEDED",
+                    "message": "Google Gemini embedding token quota exceeded. Please wait a moment or check your Gemini API quota."
+                }
+            ) from qe
 
         # Calculate cosine distance
         cosine_dist = DocumentChunk.embedding.cosine_distance(query_vector)

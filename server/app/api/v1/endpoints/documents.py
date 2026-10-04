@@ -113,6 +113,14 @@ async def upload_document(
         raise
     except Exception as e:
         logger.exception(f"Unexpected error ingesting document '{filename}': {e}")
+        if "gemini" in str(e).lower() and ("quota" in str(e).lower() or "429" in str(e).lower() or "resource_exhausted" in str(e).lower()):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "error_code": "GEMINI_QUOTA_EXCEEDED",
+                    "message": "Google Gemini embedding token quota exceeded. Please wait a moment or check your Gemini API quota."
+                }
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process and index document: {str(e)}",
@@ -168,6 +176,14 @@ async def ingest_youtube_video(
         raise
     except Exception as e:
         logger.exception(f"Unexpected error ingesting YouTube video '{payload.url}': {e}")
+        if "gemini" in str(e).lower() and ("quota" in str(e).lower() or "429" in str(e).lower() or "resource_exhausted" in str(e).lower()):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "error_code": "GEMINI_QUOTA_EXCEEDED",
+                    "message": "Google Gemini embedding token quota exceeded. Please wait a moment or check your Gemini API quota."
+                }
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process and index YouTube video: {str(e)}",
@@ -285,11 +301,27 @@ async def query_documents(
     - Generates grounded response with citations.
     """
     doc_id_str = str(payload.document_id) if payload.document_id else None
-    result = await run_agentic_rag(
-        query=payload.query,
-        user_id=str(current_user.id),
-        document_id=doc_id_str,
-    )
+    try:
+        result = await run_agentic_rag(
+            query=payload.query,
+            user_id=str(current_user.id),
+            document_id=doc_id_str,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        if "gemini" in str(e).lower() and ("quota" in str(e).lower() or "429" in str(e).lower() or "resource_exhausted" in str(e).lower()):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "error_code": "GEMINI_QUOTA_EXCEEDED",
+                    "message": "Google Gemini embedding token quota exceeded. Please wait a moment or check your Gemini API quota."
+                }
+            )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error executing document query: {str(e)}",
+        )
 
     return DocumentQueryResponse(
         query=payload.query,

@@ -30,6 +30,7 @@ import {
 import { fetchPinsApi, pinMessageApi, unpinMessageByMessageIdApi } from "@/lib/api/pin"
 import { fetchDocumentsApi, ingestYouTubeVideoApi, fetchYouTubeDocumentDetailsApi } from "@/lib/api/documents"
 import { PinItem } from "@/types/pin"
+import { isGeminiQuotaError, showGeminiQuotaToast } from "@/lib/gemini-quota"
 
 
 function ChatSkeleton() {
@@ -73,7 +74,7 @@ function mapApiToSession(apiConv: ApiConversation): ConversationSession {
     title: apiConv.title,
     updatedAt: new Date(apiConv.updated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     preview: "Chat session",
-    model: "gemini-2.5-flash",
+    model: "groq",
     category: "Today",
     isPinned: apiConv.is_pinned,
     isArchived: apiConv.is_archived,
@@ -108,7 +109,7 @@ export default function ChatPage() {
   const [isMessagesLoading, setIsMessagesLoading] = useState<boolean>(false)
 
   const [input, setInput] = useState<string>("")
-  const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash")
+  const [selectedModel, setSelectedModel] = useState<string>("groq")
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false)
@@ -766,13 +767,19 @@ Click any line in the transcript above to seek the video player to that timestam
     } catch (err: any) {
       if (err.name !== "AbortError") {
         console.error("Chat error:", err)
+        const isQuota = isGeminiQuotaError(err)
+        if (isQuota) {
+          showGeminiQuotaToast()
+        }
         setMessagesMap((prev) => {
           const currentList = prev[currentConvId] || []
           const updatedList = currentList.map((msg) => {
             if (msg.id === assistantMsgId) {
               return {
                 ...msg,
-                content: "An error occurred while communicating with Nexora AI. Please try again.",
+                content: isQuota
+                  ? "Google Gemini embedding token quota has been exceeded. Please wait a moment or check your Gemini API quota limits."
+                  : "An error occurred while communicating with Nexora AI. Please try again.",
                 statusLabel: undefined,
                 isSearching: false,
               }

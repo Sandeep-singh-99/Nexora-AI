@@ -1,4 +1,5 @@
 import axios, { InternalAxiosRequestConfig, AxiosError } from "axios";
+import { isGeminiQuotaError, showGeminiQuotaToast } from "@/lib/gemini-quota";
 
 // Helper function to read cookie value by name on client
 export function getCookie(name: string): string | null {
@@ -81,6 +82,10 @@ api.interceptors.response.use(
       } finally {
         isRefreshing = false;
       }
+    }
+
+    if (isGeminiQuotaError(error)) {
+      showGeminiQuotaToast();
     }
 
     return Promise.reject(error);

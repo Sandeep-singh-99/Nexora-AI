@@ -165,16 +165,19 @@ async def generate_grounded_node(state: RagAgentState) -> dict:
         answer_text = response.content if hasattr(response, "content") else str(response)
     except Exception as e:
         logger.error(f"Error generating grounded RAG response: {e}")
-        # Fallback to Gemini if Groq encountered error
+        # Fallback to OpenRouter if configured
         try:
-            gemini_llm = get_llm("gemini")
-            response = await gemini_llm.ainvoke([
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=user_message),
-            ])
-            answer_text = response.content if hasattr(response, "content") else str(response)
-        except Exception as gemini_err:
-            logger.error(f"Gemini fallback also failed: {gemini_err}")
+            if settings.OPENROUTER_API_KEY:
+                fallback_llm = get_llm("openrouter")
+                response = await fallback_llm.ainvoke([
+                    SystemMessage(content=system_prompt),
+                    HumanMessage(content=user_message),
+                ])
+                answer_text = response.content if hasattr(response, "content") else str(response)
+            else:
+                answer_text = "I encountered an error synthesizing the answer from your documents. Please try again."
+        except Exception as fallback_err:
+            logger.error(f"Secondary LLM fallback also failed: {fallback_err}")
             answer_text = "I encountered an error synthesizing the answer from your documents. Please try again."
 
     return {

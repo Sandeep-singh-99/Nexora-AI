@@ -93,9 +93,9 @@ flowchart TD
 
     subgraph External_Services ["External Services & Observability"]
         Groq["Groq Llama-3 Fast Inference"]
-        Gemini["Google Gemini GenAI"]
+        OpenRouter["OpenRouter LLM"]
         Tavily["Tavily Web Search API"]
-        Embeddings["Google GenAI Embeddings\n(768-dim)"]
+        Embeddings["Google Gemini Embeddings\n(768-dim)"]
         LangSmith["LangSmith Tracing & Telemetry"]
     end
 
@@ -126,13 +126,13 @@ flowchart TD
     ChatAgent <--> RedisCache
     ChatAgent <--> Tavily
     Router & ChatAgent & CodingAgent & MathAgent <--> Groq
-    ChatAgent <--> Gemini
+    ChatAgent <--> OpenRouter
     AI_Engine <--> MemorySaver
     AI_Engine <--> LangSmith
     
     ChatAgent <--> PGVector
-    DocIngest --> HF --> PGVector
-    YTIngest --> HF --> PGVector
+    DocIngest --> Embeddings --> PGVector
+    YTIngest --> Embeddings --> PGVector
     FastAPI <--> Postgres
     FastAPI <--> RedisCache
     GenUI <--> UI
@@ -454,15 +454,14 @@ Nexora's backend emits structured `ui` events over the SSE stream that the Next.
 | **Styling & Animation** | [Tailwind CSS v4](https://tailwindcss.com/), [Motion 13.2](https://motion.dev/), [Lucide React](https://lucide.dev/), [Base UI](https://base-ui.com/) |
 | **Markdown & Math Rendering** | [KaTeX 0.18.7](https://katex.org/), `react-markdown`, `remark-math`, `rehype-katex`, `remark-gfm` |
 | **Backend API** | [FastAPI 0.141.1](https://fastapi.tiangolo.com/), [Uvicorn 0.52.4](https://www.uvicorn.org/), [Python 3.11](https://www.python.org/) |
-| **Agent Orchestration** | [LangGraph 1.2.11](https://github.com/langchain-ai/langgraph), [LangChain Core 1.6.2](https://github.com/langchain-ai/langchain) |
-| **LLM & Inference** | [Groq](https://groq.com/) (Llama-3 via `langchain-groq`), [Google Gemini](https://ai.google.dev/) (`langchain-google-genai`) |
+| **LLM & Inference** | [Groq](https://groq.com/) (Llama-3 via `langchain-groq`), [OpenRouter](https://openrouter.ai/) |
+| **Vector Embeddings** | [Google Gemini Embeddings](https://ai.google.dev/) (`gemini-embedding-2`, 768-dimensional embeddings) |
 | **Web Search & Caching** | [Tavily Search API](https://tavily.com/) (`langchain-tavily 0.2.18`) with [Redis 8.1.0](https://redis.io/) TTL cache |
 | **Caching & Rate Limiting** | [Redis](https://redis.io/) (`redis>=8.1.0`), Redis ZSET Sliding-Window Rate Limiter & Token Blacklisting |
 | **Media & Transcripts** | [youtube-transcript-api 0.6.0](https://pypi.org/project/youtube-transcript-api/) |
 | **Document Processing & OCR** | `pypdf 6.19.0`, `python-docx 1.2.0`, `pytesseract 0.3.13`, `Pillow 12.3.0` |
 | **Math & Symbolic Engine** | [SymPy 1.13.0](https://www.sympy.org/), [SciPy 1.12.0](https://scipy.org/), [NumPy](https://numpy.org/) |
 | **Database & Vector Store** | [PostgreSQL](https://www.postgresql.org/) with [pgvector 0.5.0](https://github.com/pgvector/pgvector), [SQLAlchemy 2.0.52 Async](https://www.sqlalchemy.org/), [Alembic 1.19.2](https://alembic.sqlalchemy.org/) |
-| **Vector Embeddings** | [Google GenAI Embeddings](https://ai.google.dev/) (`gemini-embedding-2`, 768-dimensional embeddings) |
 | **Security & Cryptography** | `argon2-cffi 23.1.0`, `pyjwt 2.8.0`, Double-Submit CSRF, Secure HTTP-only Cookies |
 | **Observability** | [LangSmith](https://smith.langchain.com/) (`langsmith 0.1.0`) |
 | **Package & Dev Tooling** | [`uv`](https://github.com/astral-sh/uv), [`pnpm 11.21.0`](https://pnpm.io/), [Docker](https://www.docker.com/) & Docker Compose |
@@ -617,11 +616,11 @@ COOKIE_SAMESITE=lax
 GROQ_API_KEY=gsk_...
 GROQ_MODEL=openai/gpt-oss-120b
 
+# Vector Embeddings (Google Gemini)
 GOOGLE_API_KEY=AIzaSy...
-GEMINI_MODEL=gemini-2.5-flash
-
-# Embeddings & Web Search
 GOOGLE_EMBEDDING_MODEL=gemini-embedding-2
+
+# Web Search
 TAVILY_API_KEY=tvly-...
 
 # Observability (Optional)

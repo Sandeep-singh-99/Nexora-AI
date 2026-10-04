@@ -11,15 +11,36 @@ _embedding_model = None
 TARGET_DIM = 768
 
 
+class GeminiQuotaExceededError(Exception):
+    """Raised when Google Gemini embedding token quota or rate limit is exceeded."""
+    def __init__(self, message: str = "Google Gemini embedding token quota exceeded. Please wait a moment or check your Gemini API quota."):
+        super().__init__(message)
+        self.message = message
+
+
+def is_gemini_quota_error(err: Exception) -> bool:
+    """Detects whether an exception represents a Google Gemini 429 / quota / rate limit error."""
+    err_str = str(err).lower()
+    return (
+        "resource_exhausted" in err_str
+        or "429" in err_str
+        or "quota" in err_str
+        or "rate_limit" in err_str
+        or "rate limit" in err_str
+        or "tokens per minute" in err_str
+        or "requests per minute" in err_str
+    )
+
+
 def _get_or_create_model():
-    """Lazily load embeddings model."""
+    """Lazily load Google Gemini embeddings model."""
     global _embedding_model
     if _embedding_model is None:
         try:
             from app.ai.core.embedding import get_embeddings
             _embedding_model = get_embeddings()
         except Exception as err:
-            logger.error(f"Failed to initialize embedding model: {err}")
+            logger.error(f"Failed to initialize Google Gemini embedding model: {err}")
             _embedding_model = None
     return _embedding_model
 
@@ -42,7 +63,7 @@ def _generate_fallback_vector(text: str, target_dim: int = TARGET_DIM) -> List[f
 
 
 def get_embedding_vector(text: str) -> List[float]:
-    """Generates a 768-dimensional float vector embedding for single text string."""
+    """Generates a 768-dimensional float vector embedding for single text string using Google Gemini."""
     clean_text = text.strip() if text else ""
     if not clean_text:
         return [0.0] * TARGET_DIM
@@ -56,13 +77,16 @@ def get_embedding_vector(text: str) -> List[float]:
                 raw_vec = model.encode(clean_text).tolist()
             return _pad_or_truncate_vector(raw_vec)
         except Exception as e:
+            if is_gemini_quota_error(e):
+                logger.error(f"Google Gemini embedding token quota exceeded: {e}")
+                raise GeminiQuotaExceededError(f"Google Gemini embedding token quota exceeded: {e}") from e
             logger.warning(f"Error computing embedding: {e}; using fallback vector.")
 
     return _generate_fallback_vector(clean_text)
 
 
 def get_batch_embedding_vectors(texts: List[str]) -> List[List[float]]:
-    """Generates 768-dimensional float vector embeddings for a list of texts in batch."""
+    """Generates 768-dimensional float vector embeddings for a list of texts in batch using Google Gemini."""
     if not texts:
         return []
 
@@ -76,6 +100,9 @@ def get_batch_embedding_vectors(texts: List[str]) -> List[List[float]]:
                 raw_vectors = model.encode(texts, show_progress_bar=False).tolist()
             return [_pad_or_truncate_vector(v) for v in raw_vectors]
         except Exception as e:
+            if is_gemini_quota_error(e):
+                logger.error(f"Google Gemini embedding token quota exceeded: {e}")
+                raise GeminiQuotaExceededError(f"Google Gemini embedding token quota exceeded: {e}") from e
             logger.warning(f"Error computing batch embeddings: {e}; falling back to individual generation.")
 
     return [get_embedding_vector(t) for t in texts]

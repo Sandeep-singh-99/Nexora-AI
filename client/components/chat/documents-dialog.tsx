@@ -31,6 +31,7 @@ import {
   SensitiveDataError,
 } from "@/lib/api/documents"
 import { GuardrailsDialog } from "./guardrails-dialog"
+import { isGeminiQuotaError, showGeminiQuotaToast } from "@/lib/gemini-quota"
 
 interface DocumentsDialogProps {
   isOpen: boolean
@@ -125,8 +126,13 @@ export function DocumentsDialog({
         return
       }
       console.error("Upload error:", err)
+      if (isGeminiQuotaError(err)) {
+        showGeminiQuotaToast()
+        setErrorMsg("Google Gemini token quota exceeded. Please wait a moment or check your API limits.")
+        return
+      }
       const detail = err.response?.data?.detail || err.message || "Failed to upload document."
-      setErrorMsg(detail)
+      setErrorMsg(typeof detail === "object" ? detail.message || JSON.stringify(detail) : detail)
     } finally {
       setIsUploading(false)
       if (fileInputRef.current) {
@@ -164,8 +170,13 @@ export function DocumentsDialog({
       onDocumentUploaded?.(doc)
     } catch (err: any) {
       console.error("YouTube import error:", err)
+      if (isGeminiQuotaError(err)) {
+        showGeminiQuotaToast()
+        setErrorMsg("Google Gemini token quota exceeded. Please wait a moment or check your API limits.")
+        return
+      }
       const detail = err.response?.data?.detail || err.message || "Failed to transcribe YouTube video."
-      setErrorMsg(detail)
+      setErrorMsg(typeof detail === "object" ? detail.message || JSON.stringify(detail) : detail)
     } finally {
       setIsImportingYouTube(false)
     }

@@ -29,8 +29,8 @@ class Settings:
         os.getenv("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", "30")
     )
 
+    # Google Gemini strictly for Vector Embeddings
     GEMINI_API_KEY: str = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
-    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     GOOGLE_EMBEDDING_MODEL: str = os.getenv("GOOGLE_EMBEDDING_MODEL", "gemini-embedding-2")
 
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")

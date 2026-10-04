@@ -1,5 +1,6 @@
 import { api, getCookie } from "./axios";
 import { GenerativeUIResponse } from "@/types/chat";
+import { isGeminiQuotaError, showGeminiQuotaToast } from "@/lib/gemini-quota";
 
 export interface ChatRequest {
   message: string;
@@ -31,7 +32,7 @@ export type SSEEvent =
   | { type: "token"; content: string }
   | { type: "ui"; ui: GenerativeUIResponse }
   | { type: "end" }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string; code?: string };
 
 export interface DeleteAiConversationResponse {
   success: boolean;
@@ -97,6 +98,9 @@ export async function sendStreamingChatMessageApi(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    if (response.status === 429 || isGeminiQuotaError(errorData)) {
+      showGeminiQuotaToast();
+    }
     throw errorData;
   }
 
@@ -120,6 +124,9 @@ export async function sendStreamingChatMessageApi(
 
         try {
           const event: SSEEvent = JSON.parse(jsonStr);
+          if (event.type === "error" && (event.code === "GEMINI_QUOTA_EXCEEDED" || isGeminiQuotaError(event.message))) {
+            showGeminiQuotaToast(event.message);
+          }
           onEvent(event);
         } catch (e) {
           console.error("Error parsing SSE line:", e);

@@ -16,7 +16,7 @@ interface ProjectCardProps {
 export function ProjectCard({
   name = "ClassBuddy",
   status = "Active Development",
-  techStack = ["FastAPI", "React 19", "LangGraph", "Gemini 2.5"],
+  techStack = ["FastAPI", "React 19", "LangGraph", "Groq Llama-3"],
   stars = 42,
   branches = 4,
   lastUpdated = "2 hours ago",

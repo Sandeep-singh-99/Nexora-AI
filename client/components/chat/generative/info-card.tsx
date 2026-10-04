@@ -16,8 +16,9 @@ export function InfoCard({
   items = [
     { label: "Framework", value: "Next.js 16 + React 19" },
     { label: "Orchestrator", value: "FastAPI + LangGraph" },
-    { label: "Model Provider", value: "Google Gemini 2.5 Flash" },
-    { label: "Streaming", value: "Vercel AI SDK 4.0" },
+    { label: "Model Provider", value: "Groq" },
+    { label: "Embeddings", value: "Google Gemini (768-dim)" },
+    { label: "Streaming", value: "FastAPI SSE + Vercel AI SDK" },
   ],
 }: InfoCardProps) {
   return (

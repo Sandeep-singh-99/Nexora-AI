@@ -11,12 +11,16 @@ def get_llm(provider: str = "groq"):
             api_key=settings.GROQ_API_KEY,
         )
 
-    if provider == "gemini":
+    if provider == "openrouter":
         return init_chat_model(
-            settings.GEMINI_MODEL,
-            model_provider="google_genai",
+            settings.OPENROUTER_MODEL,
+            model_provider="openai",
+            base_url="https://openrouter.ai/api/v1",
             temperature=0.2,
-            api_key=settings.GEMINI_API_KEY,
+            api_key=settings.OPENROUTER_API_KEY,
         )
+
+    if provider == "gemini":
+        raise ValueError("Google Gemini chat model has been removed; Google Gemini is exclusively used for embedding.")
 
     raise ValueError(f"Unsupported LLM provider: {provider}")
