@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation"
 import { motion } from "motion/react"
 import { MessageSquare } from "lucide-react"
 import { useAuth } from "@/components/providers/auth-provider"
+import { useArtifact } from "@/components/providers/artifact-provider"
+import { ArtifactCanvas } from "@/components/chat/artifacts/artifact-canvas"
+import { extractArtifactsFromContent } from "@/lib/artifacts"
+import { Artifact } from "@/types/artifact"
 import { ChatSidebar } from "@/components/chat/chat-sidebar"
 import { ChatSidebarSkeleton } from "@/components/chat/chat-sidebar-skeleton"
 import { ChatHeader } from "@/components/chat/chat-header"
@@ -148,6 +152,57 @@ export default function ChatPage() {
 
   const activeMessages = activeId ? messagesMap[activeId] || [] : []
 
+  const {
+    isOpen: isCanvasOpen,
+    isMaximized: isCanvasMaximized,
+    splitRatio,
+    setSplitRatio,
+    registerArtifacts,
+    clearArtifacts,
+  } = useArtifact()
+
+  // Automatically discover and register artifacts from messages in the active conversation
+  useEffect(() => {
+    if (activeMessages.length > 0) {
+      const found: Artifact[] = []
+      activeMessages.forEach((msg) => {
+        if (msg.role === "assistant" && msg.content) {
+          const { artifacts } = extractArtifactsFromContent(msg.content, msg.id)
+          if (artifacts.length > 0) {
+            found.push(...artifacts)
+          }
+        }
+      })
+      if (found.length > 0) {
+        registerArtifacts(found)
+      }
+    }
+  }, [activeMessages, registerArtifacts])
+
+  // Mouse drag handler for resizing the split pane
+  const handleMouseDownResizer = (e: React.MouseEvent) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startRatio = splitRatio
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX
+      const containerWidth = window.innerWidth - (isSidebarCollapsed ? 0 : 260)
+      if (containerWidth <= 0) return
+      const deltaPercent = (deltaX / containerWidth) * 100
+      const newRatio = startRatio - deltaPercent
+      setSplitRatio(newRatio)
+    }
+
+    const onMouseUp = () => {
+      window.removeEventListener("mousemove", onMouseMove)
+      window.removeEventListener("mouseup", onMouseUp)
+    }
+
+    window.addEventListener("mousemove", onMouseMove)
+    window.addEventListener("mouseup", onMouseUp)
+  }
+
   // Refresh conversation list from backend
   const refreshConversations = async () => {
     try {
@@ -258,6 +313,7 @@ export default function ChatPage() {
 
   // Handle New Chat (Switch to fresh blank draft state without creating empty DB rows)
   const handleNewChat = () => {
+    clearArtifacts()
     setActiveId("")
     setInput("")
     setActiveDocument(null)
@@ -270,6 +326,7 @@ export default function ChatPage() {
       setMobileSidebarOpen(false)
       return
     }
+    clearArtifacts()
     setActiveId(id)
     setMobileSidebarOpen(false)
 
@@ -849,115 +906,157 @@ Click any line in the transcript above to seek the video player to that timestam
         />
 
 
-        {/* Scrollable Messages Area Wrapper */}
-        <div className="relative flex-1 min-h-0">
+        {/* Chat & Canvas Split Container */}
+        <div className="flex flex-1 min-h-0 overflow-hidden relative">
+          {/* Chat Column */}
           <div
-            ref={scrollContainerRef}
-            onScroll={handleScroll}
-            className="h-full overflow-y-auto px-4 md:px-8 py-6 space-y-6 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-white/10"
+            style={
+              isCanvasOpen && !isCanvasMaximized
+                ? { width: `${100 - splitRatio}%` }
+                : undefined
+            }
+            className={`flex flex-col h-full overflow-hidden transition-[width] duration-75 ${
+              isCanvasOpen && isCanvasMaximized
+                ? "hidden"
+                : isCanvasOpen
+                ? "shrink-0"
+                : "w-full flex-1"
+            }`}
           >
-            {isConversationsLoading ? (
-              <ChatSkeleton />
-            ) : isLoading ? (
-              <div className="max-w-4xl mx-auto space-y-6 pb-8">
-                {activeMessages.map((msg) => {
-                  const isMsgPinned = pinnedMessageIds.has(msg.id)
-                  if (msg.role === "user") {
-                    return (
-                      <div key={msg.id} id={`msg-${msg.id}`}>
-                        <UserMessage content={msg.content} />
-                      </div>
-                    )
-                  } else {
-                    return (
-                      <div key={msg.id} id={`msg-${msg.id}`}>
-                        <AssistantMessage
-                          message={msg}
-                          isPinned={isMsgPinned}
-                          onTogglePin={() => handleTogglePinMessage(msg.id)}
-                        />
-                      </div>
-                    )
-                  }
-                })}
-                <div ref={messagesEndRef} />
-              </div>
-            ) : activeId === "" ? (
-              <motion.div
-                key="empty-state"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className="flex flex-col justify-center min-h-full py-8"
+            {/* Scrollable Messages Area Wrapper */}
+            <div className="relative flex-1 min-h-0">
+              <div
+                ref={scrollContainerRef}
+                onScroll={handleScroll}
+                className="h-full overflow-y-auto px-4 md:px-8 py-6 space-y-6 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-white/10"
               >
-                <EmptyState onSelectSuggestion={(promptText: string) => handleSubmitMessage(promptText)} />
-              </motion.div>
-            ) : isMessagesLoading ? (
-              <ChatSkeleton />
-            ) : activeMessages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full min-h-[45vh] py-8 text-center text-slate-500 dark:text-slate-400">
-                <div className="h-12 w-12 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 flex items-center justify-center mb-3 text-emerald-500 dark:text-emerald-400 shadow-sm dark:shadow-inner">
-                  <MessageSquare className="h-5 w-5" />
-                </div>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">No messages in this chat yet</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs">Ask a question or enter a prompt below to start chatting.</p>
+                {isConversationsLoading ? (
+                  <ChatSkeleton />
+                ) : isLoading ? (
+                  <div className="max-w-4xl mx-auto space-y-6 pb-8">
+                    {activeMessages.map((msg) => {
+                      const isMsgPinned = pinnedMessageIds.has(msg.id)
+                      if (msg.role === "user") {
+                        return (
+                          <div key={msg.id} id={`msg-${msg.id}`}>
+                            <UserMessage content={msg.content} />
+                          </div>
+                        )
+                      } else {
+                        return (
+                          <div key={msg.id} id={`msg-${msg.id}`}>
+                            <AssistantMessage
+                              message={msg}
+                              isPinned={isMsgPinned}
+                              onTogglePin={() => handleTogglePinMessage(msg.id)}
+                            />
+                          </div>
+                        )
+                      }
+                    })}
+                    <div ref={messagesEndRef} />
+                  </div>
+                ) : activeId === "" ? (
+                  <motion.div
+                    key="empty-state"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex flex-col justify-center min-h-full py-8"
+                  >
+                    <EmptyState onSelectSuggestion={(promptText: string) => handleSubmitMessage(promptText)} />
+                  </motion.div>
+                ) : isMessagesLoading ? (
+                  <ChatSkeleton />
+                ) : activeMessages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full min-h-[45vh] py-8 text-center text-slate-500 dark:text-slate-400">
+                    <div className="h-12 w-12 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 flex items-center justify-center mb-3 text-emerald-500 dark:text-emerald-400 shadow-sm dark:shadow-inner">
+                      <MessageSquare className="h-5 w-5" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">No messages in this chat yet</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs">Ask a question or enter a prompt below to start chatting.</p>
+                  </div>
+                ) : (
+                  <motion.div
+                    key={activeId || "active-chat"}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="max-w-4xl mx-auto space-y-6 pb-8"
+                  >
+                    {activeMessages.map((msg) => {
+                      const isMsgPinned = pinnedMessageIds.has(msg.id)
+                      if (msg.role === "user") {
+                        return (
+                          <div key={msg.id} id={`msg-${msg.id}`}>
+                            <UserMessage content={msg.content} />
+                          </div>
+                        )
+                      } else {
+                        return (
+                          <div key={msg.id} id={`msg-${msg.id}`}>
+                            <AssistantMessage
+                              message={msg}
+                              isPinned={isMsgPinned}
+                              onTogglePin={() => handleTogglePinMessage(msg.id)}
+                            />
+                          </div>
+                        )
+                      }
+                    })}
+                    <div ref={messagesEndRef} />
+                  </motion.div>
+                )}
               </div>
-            ) : (
-              <motion.div
-                key={activeId || "active-chat"}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-                className="max-w-4xl mx-auto space-y-6 pb-8"
-              >
-                {activeMessages.map((msg) => {
-                  const isMsgPinned = pinnedMessageIds.has(msg.id)
-                  if (msg.role === "user") {
-                    return (
-                      <div key={msg.id} id={`msg-${msg.id}`}>
-                        <UserMessage content={msg.content} />
-                      </div>
-                    )
-                  } else {
-                    return (
-                      <div key={msg.id} id={`msg-${msg.id}`}>
-                        <AssistantMessage
-                          message={msg}
-                          isPinned={isMsgPinned}
-                          onTogglePin={() => handleTogglePinMessage(msg.id)}
-                        />
-                      </div>
-                    )
-                  }
-                })}
-                <div ref={messagesEndRef} />
-              </motion.div>
-            )}
+
+              {/* Floating Scroll to Bottom Button */}
+              {showScrollBottom && <ScrollToBottom onClick={scrollToBottom} />}
+            </div>
+
+            {/* Dedicated Chat Input Area with clear spacing */}
+            <div className="shrink-0 px-4 md:px-8 pt-4 pb-6 bg-slate-50/90 dark:bg-[#0A0F18] border-t border-slate-200 dark:border-white/[0.06] transition-colors">
+              <div className="max-w-4xl mx-auto">
+                <ChatInput
+                  input={input}
+                  setInput={setInput}
+                  isLoading={isLoading}
+                  onSubmit={(promptText) => handleSubmitMessage(promptText)}
+                  onStop={handleStopGeneration}
+                  onOpenDocuments={() => setIsDocumentsOpen(true)}
+                  documentCount={documents.length}
+                  onDocumentAttached={(doc) => {
+                    setDocuments((prev) => [doc, ...prev])
+                    setActiveDocument(doc)
+                  }}
+                  activeDocument={activeDocument}
+                  onClearActiveDocument={() => setActiveDocument(null)}
+                />
+              </div>
+            </div>
           </div>
 
-          {/* Floating Scroll to Bottom Button */}
-          {showScrollBottom && <ScrollToBottom onClick={scrollToBottom} />}
-        </div>
+          {/* Draggable Divider Bar */}
+          {isCanvasOpen && !isCanvasMaximized && (
+            <div
+              onMouseDown={handleMouseDownResizer}
+              className="w-1.5 hover:w-2 bg-slate-200 dark:bg-white/10 hover:bg-emerald-500/80 active:bg-emerald-500 cursor-col-resize transition-all shrink-0 z-20 flex items-center justify-center group select-none"
+              title="Drag to resize split pane"
+            >
+              <div className="w-0.5 h-8 rounded-full bg-slate-400 dark:bg-white/20 group-hover:bg-white" />
+            </div>
+          )}
 
-        {/* Dedicated Chat Input Area with clear spacing */}
-        <div className="shrink-0 px-4 md:px-8 pt-4 pb-6 bg-slate-50/90 dark:bg-[#0A0F18] border-t border-slate-200 dark:border-white/[0.06] transition-colors">
-          <div className="max-w-4xl mx-auto">
-            <ChatInput
-              input={input}
-              setInput={setInput}
-              isLoading={isLoading}
-              onSubmit={(promptText) => handleSubmitMessage(promptText)}
-              onStop={handleStopGeneration}
-              onOpenDocuments={() => setIsDocumentsOpen(true)}
-              documentCount={documents.length}
-              onDocumentAttached={(doc) => {
-                setDocuments((prev) => [doc, ...prev])
-                setActiveDocument(doc)
-              }}
-              activeDocument={activeDocument}
-              onClearActiveDocument={() => setActiveDocument(null)}
-            />
-          </div>
+          {/* Right-Hand Split Pane (Artifact Canvas) */}
+          {isCanvasOpen && (
+            <div
+              style={!isCanvasMaximized ? { width: `${splitRatio}%` } : undefined}
+              className={`h-full overflow-hidden ${
+                isCanvasMaximized ? "w-full" : "shrink-0"
+              }`}
+            >
+              <ArtifactCanvas />
+            </div>
+          )}
         </div>
       </div>
 

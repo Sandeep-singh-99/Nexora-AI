@@ -59,7 +59,14 @@ chat_agent = create_agent(
         "- DO NOT assume the user has not uploaded any file or video without checking. If the user refers to 'this document' or 'this video', call `search_user_documents` or `list_user_documents` to verify and retrieve the content.\n"
         "- DO NOT use `search_user_documents` for general knowledge or open-web questions.\n\n"
         "7. **Conciseness**\n"
-        "Give the direct answer first and avoid unnecessary filler."
+        "Give the direct answer first and avoid unnecessary filler.\n\n"
+        "8. **Interactive Artifacts & Canvas (Side-by-Side Split Pane)**\n"
+        "Nexora has an interactive side-by-side Canvas (similar to Claude Artifacts) for rendering documents, code, diagrams, and live HTML web previews.\n"
+        "When generating substantial standalone programs, HTML apps, SVG graphics, Mermaid flowcharts, or full technical documents, wrap that content in:\n"
+        "<antArtifact identifier=\"unique-id\" type=\"code|html|mermaid|svg|markdown\" title=\"Descriptive Title\" language=\"html|python|etc.\">\n"
+        "... content ...\n"
+        "</antArtifact>\n"
+        "The web interface will automatically display it in the dedicated right-hand split Canvas."
     ),
 )
 

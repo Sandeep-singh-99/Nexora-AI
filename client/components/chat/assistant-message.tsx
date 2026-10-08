@@ -5,13 +5,15 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
-import { ChatMessage } from "@/types/chat"
+import { ChatMessage, SearchResultItem } from "@/types/chat"
 import { GenerativeUIRenderer } from "./generative-ui"
 import { AIThinking } from "./ai-thinking"
 import { MessageActions } from "./message-actions"
-import { Sparkles, Copy, Check, Terminal, Globe, ExternalLink, Pin, FileText, Play, Tv } from "lucide-react"
-import { SearchResultItem } from "@/types/chat"
+import { Sparkles, Copy, Check, Terminal, Globe, ExternalLink, Pin, FileText, Play, Tv, PanelRight } from "lucide-react"
 import { useAppearance } from "@/components/providers/theme-provider"
+import { useArtifact } from "@/components/providers/artifact-provider"
+import { extractArtifactsFromContent, createArtifactFromCode } from "@/lib/artifacts"
+import { ArtifactCard } from "./artifact-card"
 import { cn } from "@/lib/utils"
 
 
@@ -158,8 +160,9 @@ function preprocessLaTeX(content: string): string {
     )
 }
 
-function CodeBlock({ language, value }: { language: string; value: string }) {
+function CodeBlock({ language, value, messageId }: { language: string; value: string; messageId?: string }) {
   const [copied, setCopied] = useState(false)
+  const { openArtifact } = useArtifact()
 
   const handleCopy = async () => {
     try {
@@ -171,6 +174,11 @@ function CodeBlock({ language, value }: { language: string; value: string }) {
     }
   }
 
+  const handleOpenCanvas = () => {
+    const artifact = createArtifactFromCode(value, language, undefined, messageId)
+    openArtifact(artifact)
+  }
+
   return (
     <div className="my-3 rounded-xl border border-white/10 bg-[#070A0F] overflow-hidden shadow-xl">
       <div className="flex items-center justify-between px-3.5 py-1.5 bg-white/[0.03] border-b border-white/10 text-xs text-slate-400 font-mono">
@@ -178,20 +186,31 @@ function CodeBlock({ language, value }: { language: string; value: string }) {
           <Terminal className="h-3.5 w-3.5 text-emerald-400" />
           <span>{language || "code"}</span>
         </div>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1 text-[11px] hover:text-white transition-colors cursor-pointer px-2 py-0.5 rounded bg-white/5 border border-white/10"
-        >
-          {copied ? (
-            <>
-              <Check className="h-3 w-3 text-emerald-400" /> Copied
-            </>
-          ) : (
-            <>
-              <Copy className="h-3 w-3" /> Copy code
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={handleOpenCanvas}
+            className="flex items-center gap-1 text-[11px] text-slate-300 hover:text-emerald-400 transition-colors cursor-pointer px-2 py-0.5 rounded bg-white/5 hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/20"
+            title="Open in Canvas split pane"
+          >
+            <PanelRight className="h-3 w-3" />
+            <span>Open in Canvas</span>
+          </button>
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1 text-[11px] hover:text-white transition-colors cursor-pointer px-2 py-0.5 rounded bg-white/5 border border-white/10"
+          >
+            {copied ? (
+              <>
+                <Check className="h-3 w-3 text-emerald-400" /> Copied
+              </>
+            ) : (
+              <>
+                <Copy className="h-3 w-3" /> Copy code
+              </>
+            )}
+          </button>
+        </div>
       </div>
       <div className="p-4 overflow-x-auto font-mono text-xs text-emerald-200 leading-relaxed">
         <pre>{value}</pre>
@@ -202,6 +221,19 @@ function CodeBlock({ language, value }: { language: string; value: string }) {
 
 export function AssistantMessage({ message, onRegenerate, isPinned, onTogglePin }: AssistantMessageProps) {
   const { accentConfig } = useAppearance()
+  const { registerArtifacts } = useArtifact()
+
+  // Extract any embedded artifact tags (<antArtifact ...> or <artifact ...>)
+  const { cleanContent, artifacts } = React.useMemo(() => {
+    return extractArtifactsFromContent(message.content, message.id)
+  }, [message.content, message.id])
+
+  React.useEffect(() => {
+    if (artifacts.length > 0) {
+      registerArtifacts(artifacts)
+    }
+  }, [artifacts, registerArtifacts])
+
   const showThinking = Boolean(
     message.thinkingText ||
     message.isSearching ||
@@ -256,9 +288,17 @@ export function AssistantMessage({ message, onRegenerate, isPinned, onTogglePin 
         {/* Grounded Document Sources Badges (Agentic RAG) */}
         {message.content && <DocumentCitations content={message.content} />}
 
+        {/* Extracted Artifact Cards */}
+        {artifacts && artifacts.length > 0 && (
+          <div className="space-y-2 my-2">
+            {artifacts.map((art) => (
+              <ArtifactCard key={art.id} artifact={art} />
+            ))}
+          </div>
+        )}
 
         {/* Message Content */}
-        {message.content && (
+        {cleanContent && (
           <div className="prose dark:prose-invert max-w-none text-sm text-slate-800 dark:text-slate-100 leading-relaxed font-sans">
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}
@@ -270,7 +310,7 @@ export function AssistantMessage({ message, onRegenerate, isPinned, onTogglePin 
                   const isInline = !match && !codeString.includes("\n")
 
                   if (!isInline) {
-                    return <CodeBlock language={match ? match[1] : "plaintext"} value={codeString} />
+                    return <CodeBlock language={match ? match[1] : "plaintext"} value={codeString} messageId={message.id} />
                   }
 
                   // Check if this inline code is a timestamp (e.g. 02:15, [02:15], 01:23:45)
@@ -366,7 +406,7 @@ export function AssistantMessage({ message, onRegenerate, isPinned, onTogglePin 
                 td: ({ children }) => <td className="p-2.5 text-slate-700 dark:text-slate-300">{children}</td>,
               }}
             >
-              {preprocessLaTeX(message.content)}
+              {preprocessLaTeX(cleanContent)}
             </ReactMarkdown>
           </div>
         )}
