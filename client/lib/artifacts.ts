@@ -141,6 +141,27 @@ function parseAttributes(attrString: string): Record<string, string> {
 }
 
 /**
+ * Strips markdown code block fences (e.g. ```python ... ```) if present.
+ */
+export function stripMarkdownCodeFences(rawCode: string): string {
+  if (!rawCode) return ""
+  let code = rawCode.trim()
+
+  if (code.startsWith("```")) {
+    const lines = code.split("\n")
+    if (lines.length > 0 && lines[0].trim().startsWith("```")) {
+      lines.shift()
+    }
+    if (lines.length > 0 && lines[lines.length - 1].trim().startsWith("```")) {
+      lines.pop()
+    }
+    code = lines.join("\n").trim()
+  }
+
+  return code
+}
+
+/**
  * Extracts artifact tags (<antArtifact ...>...</antArtifact> or <artifact ...>...</artifact>)
  * from assistant markdown responses, returning extracted artifacts and clean content.
  */
@@ -164,7 +185,8 @@ export function extractArtifactsFromContent(
   while ((match = tagRegex.exec(rawContent)) !== null) {
     matchIndex++
     const attrString = match[2] || ""
-    const innerContent = (match[3] || "").trim()
+    const rawInner = (match[3] || "").trim()
+    const innerContent = stripMarkdownCodeFences(rawInner)
     const attrs = parseAttributes(attrString)
 
     const identifier = attrs["identifier"] || attrs["id"] || `artifact-${matchIndex}`
@@ -205,6 +227,7 @@ export function createArtifactFromCode(
   messageId?: string
 ): Artifact {
   const normType = normalizeArtifactType(undefined, language)
+  const cleanCode = stripMarkdownCodeFences(code)
   const defaultTitle =
     title ||
     (normType === "html"
@@ -223,7 +246,7 @@ export function createArtifactFromCode(
     title: defaultTitle,
     type: normType,
     language: language || "plaintext",
-    content: code,
+    content: cleanCode,
     messageId,
     createdAt: new Date(),
   }

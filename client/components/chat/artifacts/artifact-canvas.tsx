@@ -4,11 +4,13 @@ import React, { useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { useArtifact } from "@/components/providers/artifact-provider"
 import { getArtifactFileName, getArtifactDisplayType } from "@/lib/artifacts"
+import { isExecutableLanguage } from "@/lib/sandbox/sandbox-runner"
 import { ArtifactCodeViewer } from "./artifact-code-viewer"
 import { ArtifactHtmlPreview } from "./artifact-html-preview"
 import { ArtifactMermaidPreview } from "./artifact-mermaid-preview"
 import { ArtifactMarkdownPreview } from "./artifact-markdown-preview"
 import { ArtifactSvgPreview } from "./artifact-svg-preview"
+import { ArtifactSandboxPreview } from "./artifact-sandbox-preview"
 import {
   X,
   Maximize2,
@@ -25,6 +27,7 @@ import {
   FileText,
   Palette,
   Network,
+  Terminal,
 } from "lucide-react"
 
 export function ArtifactCanvas() {
@@ -43,8 +46,14 @@ export function ArtifactCanvas() {
   const [activeTab, setActiveTab] = useState<"preview" | "code">("preview")
   const [copied, setCopied] = useState<boolean>(false)
 
-  // Default to "code" if the artifact has no preview capability
-  const hasPreview = activeArtifact && ["html", "mermaid", "markdown", "svg"].includes(activeArtifact.type)
+  // Determine if the artifact can run in interactive sandbox or has visual preview
+  const isRunnable = Boolean(
+    activeArtifact && isExecutableLanguage(activeArtifact.language || activeArtifact.type)
+  )
+  const hasPreview = Boolean(
+    activeArtifact &&
+      (["html", "mermaid", "markdown", "svg"].includes(activeArtifact.type) || isRunnable)
+  )
 
   const effectiveTab = hasPreview ? activeTab : "code"
 
@@ -157,12 +166,18 @@ export function ArtifactCanvas() {
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              <Eye className="h-3.5 w-3.5" />
+              {isRunnable ? (
+                <Terminal className="h-3.5 w-3.5 text-emerald-400" />
+              ) : (
+                <Eye className="h-3.5 w-3.5" />
+              )}
               <span>
                 {activeArtifact.type === "mermaid"
                   ? "Diagram"
                   : activeArtifact.type === "svg"
                   ? "Visual"
+                  : isRunnable
+                  ? "Run Sandbox"
                   : "Preview"}
               </span>
             </button>
@@ -234,16 +249,19 @@ export function ArtifactCanvas() {
       <div className="flex-1 overflow-hidden relative">
         {effectiveTab === "preview" ? (
           <>
-            {activeArtifact.type === "html" && (
+            {isRunnable && (
+              <ArtifactSandboxPreview artifact={activeArtifact} />
+            )}
+            {!isRunnable && activeArtifact.type === "html" && (
               <ArtifactHtmlPreview html={activeArtifact.content} />
             )}
-            {activeArtifact.type === "mermaid" && (
+            {!isRunnable && activeArtifact.type === "mermaid" && (
               <ArtifactMermaidPreview chart={activeArtifact.content} />
             )}
-            {activeArtifact.type === "markdown" && (
+            {!isRunnable && activeArtifact.type === "markdown" && (
               <ArtifactMarkdownPreview content={activeArtifact.content} />
             )}
-            {activeArtifact.type === "svg" && (
+            {!isRunnable && activeArtifact.type === "svg" && (
               <ArtifactSvgPreview svgContent={activeArtifact.content} />
             )}
           </>
@@ -251,6 +269,7 @@ export function ArtifactCanvas() {
           <ArtifactCodeViewer
             code={activeArtifact.content}
             language={activeArtifact.language || activeArtifact.type}
+            title={activeArtifact.title || activeArtifact.identifier}
           />
         )}
       </div>

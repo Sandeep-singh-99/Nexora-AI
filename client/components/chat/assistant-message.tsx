@@ -9,11 +9,13 @@ import { ChatMessage, SearchResultItem } from "@/types/chat"
 import { GenerativeUIRenderer } from "./generative-ui"
 import { AIThinking } from "./ai-thinking"
 import { MessageActions } from "./message-actions"
-import { Sparkles, Copy, Check, Terminal, Globe, ExternalLink, Pin, FileText, Play, Tv, PanelRight } from "lucide-react"
+import { Sparkles, Copy, Check, Terminal, Globe, ExternalLink, Pin, FileText, Play, Square, Tv, PanelRight } from "lucide-react"
 import { useAppearance } from "@/components/providers/theme-provider"
 import { useArtifact } from "@/components/providers/artifact-provider"
 import { extractArtifactsFromContent, createArtifactFromCode } from "@/lib/artifacts"
 import { ArtifactCard } from "./artifact-card"
+import { useCodeRunner } from "@/hooks/use-code-runner"
+import { CodeExecutionSandbox } from "./code-execution-sandbox"
 import { cn } from "@/lib/utils"
 
 
@@ -164,6 +166,26 @@ function CodeBlock({ language, value, messageId }: { language: string; value: st
   const [copied, setCopied] = useState(false)
   const { openArtifact } = useArtifact()
 
+  const {
+    status,
+    statusMessage,
+    runtimeMode,
+    setRuntimeMode,
+    logs,
+    executionTimeMs,
+    isRunning,
+    isExecutable,
+    isOpen,
+    setIsOpen,
+    run,
+    stop,
+    clearLogs,
+  } = useCodeRunner({
+    initialCode: value,
+    language,
+    defaultMode: "client",
+  })
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(value)
@@ -179,6 +201,14 @@ function CodeBlock({ language, value, messageId }: { language: string; value: st
     openArtifact(artifact)
   }
 
+  const handleRunToggle = () => {
+    if (isRunning) {
+      stop()
+    } else {
+      run(value)
+    }
+  }
+
   return (
     <div className="my-3 rounded-xl border border-white/10 bg-[#070A0F] overflow-hidden shadow-xl">
       <div className="flex items-center justify-between px-3.5 py-1.5 bg-white/[0.03] border-b border-white/10 text-xs text-slate-400 font-mono">
@@ -187,6 +217,33 @@ function CodeBlock({ language, value, messageId }: { language: string; value: st
           <span>{language || "code"}</span>
         </div>
         <div className="flex items-center gap-1.5">
+          {/* Interactive Run Button for executable snippets */}
+          {isExecutable && (
+            <button
+              type="button"
+              onClick={handleRunToggle}
+              className={cn(
+                "flex items-center gap-1 text-[11px] transition-all cursor-pointer px-2 py-0.5 rounded border font-semibold",
+                isRunning
+                  ? "bg-rose-500/20 text-rose-300 border-rose-500/30 hover:bg-rose-500/30"
+                  : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25 hover:shadow-sm"
+              )}
+              title={isRunning ? "Stop execution" : `Run ${language} code directly in sandbox`}
+            >
+              {isRunning ? (
+                <>
+                  <Square className="h-3 w-3 fill-current" />
+                  <span>Stop</span>
+                </>
+              ) : (
+                <>
+                  <Play className="h-3 w-3 fill-current text-emerald-400" />
+                  <span>Run</span>
+                </>
+              )}
+            </button>
+          )}
+
           <button
             type="button"
             onClick={handleOpenCanvas}
@@ -215,6 +272,28 @@ function CodeBlock({ language, value, messageId }: { language: string; value: st
       <div className="p-4 overflow-x-auto font-mono text-xs text-emerald-200 leading-relaxed">
         <pre>{value}</pre>
       </div>
+
+      {/* Inline Execution Sandbox Terminal Drawer */}
+      {isExecutable && isOpen && (
+        <div className="border-t border-white/10">
+          <CodeExecutionSandbox
+            code={value}
+            language={language}
+            status={status}
+            statusMessage={statusMessage}
+            logs={logs}
+            executionTimeMs={executionTimeMs}
+            runtimeMode={runtimeMode}
+            isRunning={isRunning}
+            onRun={() => run(value)}
+            onStop={stop}
+            onClear={clearLogs}
+            onToggleMode={setRuntimeMode}
+            onClose={() => setIsOpen(false)}
+            compact={true}
+          />
+        </div>
+      )}
     </div>
   )
 }
