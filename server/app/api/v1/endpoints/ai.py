@@ -160,7 +160,42 @@ def extract_tavily_results(tool_output) -> list[dict]:
                     "source": domain or "web",
                 })
 
-    return results
+def extract_clean_text(content) -> str:
+    """Safely extracts clean plain-text string from string, part dicts, or part lists across providers."""
+    if not content:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        text_parts = []
+        for item in content:
+            if isinstance(item, str):
+                text_parts.append(item)
+            elif isinstance(item, dict):
+                if "text" in item and isinstance(item["text"], str):
+                    text_parts.append(item["text"])
+                elif "content" in item and isinstance(item["content"], str):
+                    text_parts.append(item["content"])
+                elif "value" in item and isinstance(item["value"], str):
+                    text_parts.append(item["value"])
+            elif hasattr(item, "text") and isinstance(item.text, str):
+                text_parts.append(item.text)
+            elif hasattr(item, "content") and isinstance(item.content, str):
+                text_parts.append(item.content)
+            else:
+                text_parts.append(str(item))
+        return "".join(text_parts)
+    if isinstance(content, dict):
+        if "text" in content and isinstance(content["text"], str):
+            return content["text"]
+        if "content" in content and isinstance(content["content"], str):
+            return content["content"]
+        if "value" in content and isinstance(content["value"], str):
+            return content["value"]
+        return ""
+    if hasattr(content, "text") and isinstance(content.text, str):
+        return content.text
+    return str(content)
 
 
 async def event_generator(
@@ -169,17 +204,66 @@ async def event_generator(
     thread_id: str,
     user_id: Optional[str] = None,
     document_id: Optional[str] = None,
+    custom_chat_key: Optional[str] = None,
+    custom_chat_provider: Optional[str] = None,
+    custom_chat_model: Optional[str] = None,
+    custom_embedding_key: Optional[str] = None,
+    custom_embedding_provider: Optional[str] = None,
+    custom_embedding_model: Optional[str] = None,
+    model: Optional[str] = None,
 ):
     """Streams thinking steps, search queries & results, guardrails status, and LLM response tokens.
     
     Monitors client connection state to stop execution immediately when the user clicks 'Stop'.
     """
+    from app.ai.core.llm import (
+        set_active_chat_key,
+        set_active_chat_provider,
+        set_active_chat_model,
+    )
+    from app.ai.core.embedding import (
+        set_active_embedding_key,
+        set_active_embedding_provider,
+        set_active_embedding_model,
+    )
+
+    # Initialize BYOK ContextVars for this generator execution context
+    effective_chat_key = custom_chat_key or request.headers.get("x-custom-chat-key")
+    effective_chat_provider = custom_chat_provider or request.headers.get("x-custom-chat-provider")
+    effective_chat_model = custom_chat_model or model or request.headers.get("x-custom-chat-model") or request.headers.get("x-custom-model")
+
+    effective_emb_key = custom_embedding_key or request.headers.get("x-custom-embedding-key")
+    effective_emb_provider = custom_embedding_provider or request.headers.get("x-custom-embedding-provider")
+    effective_emb_model = custom_embedding_model or request.headers.get("x-custom-embedding-model")
+
+    set_active_chat_key(effective_chat_key)
+    set_active_chat_provider(effective_chat_provider)
+    set_active_chat_model(effective_chat_model)
+
+    set_active_embedding_key(effective_emb_key)
+    set_active_embedding_provider(effective_emb_provider)
+    set_active_embedding_model(effective_emb_model)
+
     configurable_dict = {
         "thread_id": thread_id,
         "user_id": user_id or "anonymous",
     }
     if document_id:
         configurable_dict["document_id"] = document_id
+    if effective_chat_key:
+        configurable_dict["custom_chat_key"] = effective_chat_key
+    if effective_chat_provider:
+        configurable_dict["custom_chat_provider"] = effective_chat_provider
+    if effective_chat_model:
+        configurable_dict["custom_chat_model"] = effective_chat_model
+    if effective_emb_key:
+        configurable_dict["custom_embedding_key"] = effective_emb_key
+    if effective_emb_provider:
+        configurable_dict["custom_embedding_provider"] = effective_emb_provider
+    if effective_emb_model:
+        configurable_dict["custom_embedding_model"] = effective_emb_model
+    if effective_chat_model:
+        configurable_dict["model"] = effective_chat_model
 
     config = {
         "configurable": configurable_dict,
@@ -200,6 +284,16 @@ async def event_generator(
 
     active_search_query = ""
     active_node = ""
+
+    # Notify client if custom API key is being utilized for this response
+    if effective_chat_key:
+        custom_meta_payload = json.dumps({
+            "type": "custom_key_meta",
+            "is_custom_key": True,
+            "provider": effective_chat_provider or "custom",
+            "model": effective_chat_model or "",
+        })
+        yield f"data: {custom_meta_payload}\n\n"
 
     try:
         # Stream events from LangGraph
@@ -375,24 +469,27 @@ async def event_generator(
                         yield f"data: {payload}\n\n"
 
                 additional_kwargs = getattr(chunk, "additional_kwargs", {}) or {}
-                reasoning = additional_kwargs.get("reasoning_content") or getattr(chunk, "reasoning_content", None)
+                raw_reasoning = additional_kwargs.get("reasoning_content") or getattr(chunk, "reasoning_content", None)
+                reasoning = extract_clean_text(raw_reasoning)
 
                 if reasoning:
                     payload = json.dumps({"type": "thinking", "content": reasoning})
                     yield f"data: {payload}\n\n"
-
-                elif chunk.content:
-                    payload = json.dumps({"type": "token", "content": chunk.content})
-                    yield f"data: {payload}\n\n"
+                else:
+                    token_text = extract_clean_text(chunk.content)
+                    if token_text:
+                        payload = json.dumps({"type": "token", "content": token_text})
+                        yield f"data: {payload}\n\n"
 
             # 4. Stream blocked response node message content if graph routed to blocked_response
             elif kind == "on_chain_end" and name == "blocked_response":
                 output = event.get("data", {}).get("output", {})
                 msgs = output.get("messages", [])
                 if msgs:
-                    blocked_text = msgs[-1].content
-                    payload = json.dumps({"type": "token", "content": blocked_text})
-                    yield f"data: {payload}\n\n"
+                    blocked_text = extract_clean_text(msgs[-1].content)
+                    if blocked_text:
+                        payload = json.dumps({"type": "token", "content": blocked_text})
+                        yield f"data: {payload}\n\n"
 
         # Signal completion
         yield f"data: {json.dumps({'type': 'end'})}\n\n"
@@ -437,6 +534,33 @@ async def chat_stream(
         thread_id = request_data.thread_id or f"session_{uuid.uuid4()}"
         user_id = str(current_user.id) if current_user else "anonymous"
 
+        chat_key = request_data.custom_chat_key or request.headers.get("x-custom-chat-key")
+        chat_provider = request_data.custom_chat_provider or request.headers.get("x-custom-chat-provider")
+        chat_model = request_data.custom_chat_model or request_data.model or request.headers.get("x-custom-chat-model") or request.headers.get("x-custom-model")
+
+        emb_key = request_data.custom_embedding_key or request.headers.get("x-custom-embedding-key")
+        emb_provider = request_data.custom_embedding_provider or request.headers.get("x-custom-embedding-provider")
+        emb_model = request_data.custom_embedding_model or request.headers.get("x-custom-embedding-model")
+
+        from app.ai.core.llm import (
+            set_active_chat_key,
+            set_active_chat_provider,
+            set_active_chat_model,
+        )
+        from app.ai.core.embedding import (
+            set_active_embedding_key,
+            set_active_embedding_provider,
+            set_active_embedding_model,
+        )
+
+        set_active_chat_key(chat_key)
+        set_active_chat_provider(chat_provider)
+        set_active_chat_model(chat_model)
+
+        set_active_embedding_key(emb_key)
+        set_active_embedding_provider(emb_provider)
+        set_active_embedding_model(emb_model)
+
         # Fire background task on every conversation turn to extract new persistent preferences
         if current_user:
             background_tasks.add_task(
@@ -452,6 +576,13 @@ async def chat_stream(
                 thread_id,
                 user_id=user_id,
                 document_id=request_data.document_id,
+                custom_chat_key=chat_key,
+                custom_chat_provider=chat_provider,
+                custom_chat_model=chat_model,
+                custom_embedding_key=emb_key,
+                custom_embedding_provider=emb_provider,
+                custom_embedding_model=emb_model,
+                model=chat_model,
             ),
             media_type="text/event-stream",
             headers={
@@ -492,12 +623,51 @@ async def chat(
                 user_text=request.message,
             )
 
+        chat_key = request.custom_chat_key
+        chat_provider = request.custom_chat_provider
+        chat_model = request.custom_chat_model or request.model
+        emb_key = request.custom_embedding_key
+        emb_provider = request.custom_embedding_provider
+        emb_model = request.custom_embedding_model
+
+        from app.ai.core.llm import (
+            set_active_chat_key,
+            set_active_chat_provider,
+            set_active_chat_model,
+        )
+        from app.ai.core.embedding import (
+            set_active_embedding_key,
+            set_active_embedding_provider,
+            set_active_embedding_model,
+        )
+
+        set_active_chat_key(chat_key)
+        set_active_chat_provider(chat_provider)
+        set_active_chat_model(chat_model)
+
+        set_active_embedding_key(emb_key)
+        set_active_embedding_provider(emb_provider)
+        set_active_embedding_model(emb_model)
+
         thread_id = request.thread_id or f"session_{uuid.uuid4()}"
         user_id = str(current_user.id) if current_user else "anonymous"
         configurable_dict = {
             "thread_id": thread_id,
             "user_id": user_id,
         }
+        if chat_key:
+            configurable_dict["custom_chat_key"] = chat_key
+        if chat_provider:
+            configurable_dict["custom_chat_provider"] = chat_provider
+        if chat_model:
+            configurable_dict["custom_chat_model"] = chat_model
+            configurable_dict["model"] = chat_model
+        if emb_key:
+            configurable_dict["custom_embedding_key"] = emb_key
+        if emb_provider:
+            configurable_dict["custom_embedding_provider"] = emb_provider
+        if emb_model:
+            configurable_dict["custom_embedding_model"] = emb_model
         if request.document_id:
             configurable_dict["document_id"] = request.document_id
 
@@ -520,11 +690,13 @@ async def chat(
             config=config,
         )
 
-        final_response = result["messages"][-1].content
+        final_response = extract_clean_text(result["messages"][-1].content)
 
         return ChatResponse(
-            response=str(final_response),
+            response=final_response,
             thread_id=thread_id,
+            is_custom_key=bool(chat_key),
+            provider=chat_provider if chat_key else None,
         )
 
     except AbuseFilterError as e:

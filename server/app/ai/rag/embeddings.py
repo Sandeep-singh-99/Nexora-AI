@@ -1,7 +1,7 @@
 import asyncio
 import hashlib
 import logging
-from typing import List
+from typing import List, Optional
 
 from app.core.config import settings
 
@@ -32,12 +32,29 @@ def is_gemini_quota_error(err: Exception) -> bool:
     )
 
 
-def _get_or_create_model():
-    """Lazily load Google Gemini embeddings model."""
+def _get_or_create_model(api_key: Optional[str] = None):
+    """Get active embeddings model (using custom BYOK key, provider & model if provided, else prebuilt)."""
     global _embedding_model
+    from app.ai.core.embedding import (
+        active_embedding_api_key_var,
+        active_embedding_provider_var,
+        active_embedding_model_var,
+        get_embeddings,
+    )
+    custom_key = (api_key or active_embedding_api_key_var.get() or "").strip() or None
+    if custom_key:
+        try:
+            return get_embeddings(
+                provider=active_embedding_provider_var.get(),
+                model=active_embedding_model_var.get(),
+                api_key=custom_key,
+            )
+        except Exception as err:
+            logger.error(f"Failed to initialize custom embedding model: {err}")
+            return None
+
     if _embedding_model is None:
         try:
-            from app.ai.core.embedding import get_embeddings
             _embedding_model = get_embeddings()
         except Exception as err:
             logger.error(f"Failed to initialize Google Gemini embedding model: {err}")
@@ -62,13 +79,13 @@ def _generate_fallback_vector(text: str, target_dim: int = TARGET_DIM) -> List[f
     return full_fallback
 
 
-def get_embedding_vector(text: str) -> List[float]:
+def get_embedding_vector(text: str, custom_api_key: Optional[str] = None) -> List[float]:
     """Generates a 768-dimensional float vector embedding for single text string using Google Gemini."""
     clean_text = text.strip() if text else ""
     if not clean_text:
         return [0.0] * TARGET_DIM
 
-    model = _get_or_create_model()
+    model = _get_or_create_model(api_key=custom_api_key)
     if model is not None:
         try:
             if hasattr(model, "embed_query"):
@@ -85,12 +102,12 @@ def get_embedding_vector(text: str) -> List[float]:
     return _generate_fallback_vector(clean_text)
 
 
-def get_batch_embedding_vectors(texts: List[str]) -> List[List[float]]:
+def get_batch_embedding_vectors(texts: List[str], custom_api_key: Optional[str] = None) -> List[List[float]]:
     """Generates 768-dimensional float vector embeddings for a list of texts in batch using Google Gemini."""
     if not texts:
         return []
 
-    model = _get_or_create_model()
+    model = _get_or_create_model(api_key=custom_api_key)
     if model is not None:
         try:
             # Batch encode for high efficiency
@@ -105,7 +122,7 @@ def get_batch_embedding_vectors(texts: List[str]) -> List[List[float]]:
                 raise GeminiQuotaExceededError(f"Google Gemini embedding token quota exceeded: {e}") from e
             logger.warning(f"Error computing batch embeddings: {e}; falling back to individual generation.")
 
-    return [get_embedding_vector(t) for t in texts]
+    return [get_embedding_vector(t, custom_api_key=custom_api_key) for t in texts]
 
 
 async def aget_embedding_vector(text: str) -> List[float]:

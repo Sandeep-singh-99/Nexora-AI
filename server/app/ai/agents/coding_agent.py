@@ -1,8 +1,8 @@
 from langchain.agents import create_agent
-from app.ai.core.llm import get_llm
+from app.ai.core.llm import get_dynamic_chat_model
 
 coding_agent = create_agent(
-    model=get_llm("groq"),
+    model=get_dynamic_chat_model(),
     tools=[],
     system_prompt=(
         "You are Nexora's software engineering specialist assistant.\n"

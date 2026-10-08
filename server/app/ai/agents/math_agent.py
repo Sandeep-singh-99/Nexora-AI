@@ -1,5 +1,5 @@
 from langchain.agents import create_agent
-from app.ai.core.llm import get_llm
+from app.ai.core.llm import get_dynamic_chat_model
 from app.ai.tool.math_tool import math_tool
 from app.ai.middleware.tool_error import (
     get_tool_error_middleware,
@@ -7,7 +7,7 @@ from app.ai.middleware.tool_error import (
 )
 
 math_agent = create_agent(
-    model=get_llm("groq"),
+    model=get_dynamic_chat_model(),
     tools=[math_tool],
     middleware=[
         get_tool_error_middleware(),

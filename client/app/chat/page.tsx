@@ -21,7 +21,7 @@ import { SettingsDialog } from "@/components/chat/settings-dialog"
 import { DocumentsDialog } from "@/components/chat/documents-dialog"
 import { ChatMessage, ConversationSession, ApiConversation, ApiMessage } from "@/types/chat"
 import { UserDocument } from "@/types/document"
-import { sendStreamingChatMessageApi } from "@/lib/api/ai"
+import { sendStreamingChatMessageApi, extractSafeString } from "@/lib/api/ai"
 import {
   fetchConversationsApi,
   createConversationApi,
@@ -35,6 +35,7 @@ import { fetchPinsApi, pinMessageApi, unpinMessageByMessageIdApi } from "@/lib/a
 import { fetchDocumentsApi, ingestYouTubeVideoApi, fetchYouTubeDocumentDetailsApi } from "@/lib/api/documents"
 import { PinItem } from "@/types/pin"
 import { isGeminiQuotaError, showGeminiQuotaToast } from "@/lib/gemini-quota"
+import { getCustomApiKeys } from "@/lib/custom-keys"
 
 
 function ChatSkeleton() {
@@ -78,7 +79,7 @@ function mapApiToSession(apiConv: ApiConversation): ConversationSession {
     title: apiConv.title,
     updatedAt: new Date(apiConv.updated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     preview: "Chat session",
-    model: "groq",
+    model: apiConv.model || "groq",
     category: "Today",
     isPinned: apiConv.is_pinned,
     isArchived: apiConv.is_archived,
@@ -86,11 +87,19 @@ function mapApiToSession(apiConv: ApiConversation): ConversationSession {
 }
 
 function mapApiToChatMessage(apiMsg: ApiMessage): ChatMessage {
+  const meta = (apiMsg.metadata || {}) as Record<string, any>
+  const isCustomKey = Boolean(
+    meta.is_custom_key || meta.isCustomKey || meta.custom_chat_key_used || meta.custom_key_used
+  )
+
   return {
     id: apiMsg.id,
     role: apiMsg.role as "user" | "assistant",
     content: apiMsg.content,
     createdAt: new Date(apiMsg.created_at),
+    isCustomKey,
+    customProvider: (meta.provider || meta.custom_provider) as string | undefined,
+    customModel: (meta.model || meta.custom_model) as string | undefined,
   }
 }
 
@@ -128,9 +137,9 @@ export default function ChatPage() {
   }
 
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false)
-  const [settingsDefaultTab, setSettingsDefaultTab] = useState<"appearance" | "account" | "memory" | "data" | "security">("appearance")
+  const [settingsDefaultTab, setSettingsDefaultTab] = useState<"appearance" | "account" | "keys" | "memory" | "data" | "security">("appearance")
 
-  const handleOpenSettings = (tab?: "appearance" | "account" | "memory" | "data" | "security") => {
+  const handleOpenSettings = (tab?: "appearance" | "account" | "keys" | "memory" | "data" | "security") => {
     if (tab) {
       setSettingsDefaultTab(tab)
     }
@@ -330,8 +339,29 @@ export default function ChatPage() {
     setActiveId(id)
     setMobileSidebarOpen(false)
 
+    // Load active conversation's model preference
+    const found = conversations.find((c) => c.id === id)
+    if (found && found.model) {
+      setSelectedModel(found.model)
+    }
+
     if (!messagesMap[id] || messagesMap[id].length === 0) {
       loadConversationMessages(id)
+    }
+  }
+
+  // Handle model change per chat session
+  const handleModelChange = async (newModel: string) => {
+    setSelectedModel(newModel)
+    if (activeId) {
+      setConversations((prev) =>
+        prev.map((c) => (c.id === activeId ? { ...c, model: newModel } : c))
+      )
+      try {
+        await updateConversationApi(activeId, { model: newModel })
+      } catch (err) {
+        console.error("Failed to update model preference in database:", err)
+      }
     }
   }
 
@@ -637,7 +667,8 @@ Click any line in the transcript above to seek the video player to that timestam
         const created = await createConversationApi(
           undefined,
           textToSend,
-          activeDocument?.filename
+          activeDocument?.filename,
+          selectedModel
         )
         const session = mapApiToSession(created)
         setConversations((prev) => [session, ...prev])
@@ -683,6 +714,9 @@ Click any line in the transcript above to seek the video player to that timestam
       createdAt: new Date(),
     }
 
+    const customKeys = getCustomApiKeys()
+    const isUsingCustomChatKey = Boolean(customKeys.chatApiKey)
+
     const assistantMsgId = `msg-ai-${Date.now()}`
     const initialAssistantMsg: ChatMessage = {
       id: assistantMsgId,
@@ -691,6 +725,9 @@ Click any line in the transcript above to seek the video player to that timestam
       thinkingText: "",
       statusLabel: "Connecting...",
       createdAt: new Date(),
+      isCustomKey: isUsingCustomChatKey,
+      customProvider: isUsingCustomChatKey ? customKeys.chatProvider : undefined,
+      customModel: isUsingCustomChatKey ? customKeys.chatModel : undefined,
     }
 
     setMessagesMap((prev) => ({
@@ -713,14 +750,17 @@ Click any line in the transcript above to seek the video player to that timestam
           message: textToSend,
           thread_id: currentConvId,
           document_id: activeDocument?.id,
+          model: selectedModel,
         },
         (event) => {
           const durationSeconds = ((Date.now() - startTime) / 1000).toFixed(1)
 
           if (event.type === "token") {
-            finalAssistantText += event.content
+            const tokenStr = typeof event.content === "string" ? event.content : extractSafeString(event.content)
+            finalAssistantText += tokenStr
           } else if (event.type === "thinking") {
-            accumulatedThinking += event.content
+            const thinkStr = typeof event.content === "string" ? event.content : extractSafeString(event.content)
+            accumulatedThinking += thinkStr
           }
 
           setMessagesMap((prev) => {
@@ -755,6 +795,13 @@ Click any line in the transcript above to seek the video player to that timestam
                   content: finalAssistantText,
                   statusLabel: undefined,
                   thinkingTime: `${durationSeconds}s`,
+                }
+              } else if (event.type === "custom_key_meta") {
+                return {
+                  ...msg,
+                  isCustomKey: true,
+                  customProvider: event.provider || msg.customProvider,
+                  customModel: event.model || msg.customModel,
                 }
               } else if (event.type === "ui") {
                 return {
@@ -792,7 +839,15 @@ Click any line in the transcript above to seek the video player to that timestam
 
       // Persist assistant message to DB after streaming completes
       if (finalAssistantText) {
-        await addMessageApi(currentConvId, finalAssistantText, "assistant").catch((err) =>
+        const assistantMetadata = isUsingCustomChatKey
+          ? {
+              is_custom_key: true,
+              provider: customKeys.chatProvider,
+              model: customKeys.chatModel,
+            }
+          : undefined
+
+        await addMessageApi(currentConvId, finalAssistantText, "assistant", assistantMetadata).catch((err) =>
           console.error("Failed to persist assistant message:", err)
         )
 
@@ -903,6 +958,9 @@ Click any line in the transcript above to seek the video player to that timestam
         <ChatHeader
           onToggleSidebar={handleToggleSidebar}
           isSidebarOpen={!isSidebarCollapsed}
+          selectedModel={selectedModel}
+          setSelectedModel={handleModelChange}
+          onOpenSettings={handleOpenSettings}
         />
 
 

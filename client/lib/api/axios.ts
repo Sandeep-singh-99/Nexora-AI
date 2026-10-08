@@ -1,5 +1,6 @@
 import axios, { InternalAxiosRequestConfig, AxiosError } from "axios";
 import { isGeminiQuotaError, showGeminiQuotaToast } from "@/lib/gemini-quota";
+import { getCustomKeyHeaders } from "@/lib/custom-keys";
 
 // Helper function to read cookie value by name on client
 export function getCookie(name: string): string | null {
@@ -16,12 +17,18 @@ export const api = axios.create({
   },
 });
 
-// Request Interceptor: Pass CSRF Token if available
+// Request Interceptor: Pass CSRF Token and Custom BYOK API Keys if available
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const csrfToken = getCookie("csrf_token");
     if (csrfToken && config.headers) {
       config.headers["X-CSRF-Token"] = csrfToken;
+    }
+    const customKeyHeaders = getCustomKeyHeaders();
+    if (config.headers && Object.keys(customKeyHeaders).length > 0) {
+      Object.entries(customKeyHeaders).forEach(([k, v]) => {
+        config.headers[k] = v;
+      });
     }
     return config;
   },

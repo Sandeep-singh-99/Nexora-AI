@@ -45,6 +45,7 @@ async def create_conversation(
         db=db,
         user_id=current_user.id,
         title=title,
+        model=payload.model or "groq",
     )
     # Invalidate conversation list cache for this user
     await invalidate_chat_cache(user_id=current_user.id)
@@ -173,6 +174,7 @@ async def update_conversation(
         title=payload.title,
         is_pinned=payload.is_pinned,
         is_archived=payload.is_archived,
+        model=payload.model,
     )
     # Invalidate cache
     await invalidate_chat_cache(conversation_id=conversation_id, user_id=current_user.id)
@@ -273,6 +275,7 @@ async def add_message(
         conversation_id=conversation_id,
         role=role,
         content=payload.content,
+        extra_metadata=payload.metadata,
     )
     # Invalidate caches so next GET returns new message immediately
     await invalidate_chat_cache(conversation_id=conversation_id, user_id=current_user.id)

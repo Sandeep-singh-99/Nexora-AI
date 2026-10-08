@@ -20,6 +20,7 @@ class ConversationCreate(BaseModel):
     title: Optional[str] = "New Chat"
     message: Optional[str] = None
     document_name: Optional[str] = None
+    model: Optional[str] = "groq"
 
 
 class TitleGenerateRequest(BaseModel):
@@ -37,6 +38,7 @@ class ConversationUpdate(BaseModel):
     title: Optional[str] = None
     is_pinned: Optional[bool] = None
     is_archived: Optional[bool] = None
+    model: Optional[str] = None
 
 
 class ConversationResponse(BaseModel):
@@ -45,6 +47,7 @@ class ConversationResponse(BaseModel):
     title: str
     is_pinned: bool
     is_archived: bool
+    model: Optional[str] = "groq"
     created_at: datetime
     updated_at: datetime
     messages: List[MessageResponse] = []
@@ -59,3 +62,4 @@ class ConversationListResponse(BaseModel):
 class ChatMessageRequest(BaseModel):
     content: str = Field(..., min_length=1, description="User query or instruction")
     conversation_id: Optional[UUID] = None
+    metadata: Optional[Dict[str, Any]] = None

@@ -64,6 +64,40 @@ async def add_security_headers(request, call_next):
     return response
 
 
+# BYOK (Bring Your Own Key) Middleware: Ingests encrypted/custom API keys, providers, and models from headers
+@app.middleware("http")
+async def byok_custom_keys_middleware(request, call_next):
+    from app.ai.core.llm import (
+        set_active_chat_key,
+        set_active_chat_provider,
+        set_active_chat_model,
+    )
+    from app.ai.core.embedding import (
+        set_active_embedding_key,
+        set_active_embedding_provider,
+        set_active_embedding_model,
+    )
+
+    chat_key = request.headers.get("x-custom-chat-key")
+    chat_provider = request.headers.get("x-custom-chat-provider")
+    chat_model = request.headers.get("x-custom-chat-model") or request.headers.get("x-custom-model")
+
+    emb_key = request.headers.get("x-custom-embedding-key")
+    emb_provider = request.headers.get("x-custom-embedding-provider")
+    emb_model = request.headers.get("x-custom-embedding-model")
+
+    set_active_chat_key(chat_key)
+    set_active_chat_provider(chat_provider)
+    set_active_chat_model(chat_model)
+
+    set_active_embedding_key(emb_key)
+    set_active_embedding_provider(emb_provider)
+    set_active_embedding_model(emb_model)
+
+    response = await call_next(request)
+    return response
+
+
 # Configure CORS Middleware for Web clients
 origins = [
     settings.FRONTEND_URL,

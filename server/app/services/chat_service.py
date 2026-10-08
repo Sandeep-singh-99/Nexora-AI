@@ -16,11 +16,13 @@ class ChatService:
         db: AsyncSession,
         user_id: UUID,
         title: str = "New Chat",
+        model: str = "groq",
     ) -> Conversation:
         """Create a new chat conversation session."""
         conversation = Conversation(
             user_id=user_id,
             title=title,
+            model=model or "groq",
         )
         db.add(conversation)
         await db.commit()
@@ -81,8 +83,9 @@ class ChatService:
         title: Optional[str] = None,
         is_pinned: Optional[bool] = None,
         is_archived: Optional[bool] = None,
+        model: Optional[str] = None,
     ) -> Optional[Conversation]:
-        """Update metadata (title, pinned, archived) of a conversation."""
+        """Update metadata (title, pinned, archived, model) of a conversation."""
         conversation = await ChatService.get_conversation(db, conversation_id, user_id, load_messages=False)
         if not conversation:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
@@ -93,6 +96,8 @@ class ChatService:
             conversation.is_pinned = is_pinned
         if is_archived is not None:
             conversation.is_archived = is_archived
+        if model is not None:
+            conversation.model = model.strip()
 
         await db.commit()
         await db.refresh(conversation)

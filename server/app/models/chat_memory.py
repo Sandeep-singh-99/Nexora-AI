@@ -43,6 +43,11 @@ class Conversation(Base):
         default=False,
         nullable=False,
     )
+    model: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        default="groq",
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=utc_now,

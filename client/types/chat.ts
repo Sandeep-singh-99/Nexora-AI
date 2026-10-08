@@ -25,6 +25,9 @@ export type ChatMessage = {
   searchQuery?: string;
   searchResults?: SearchResultItem[];
   toolsUsed?: string[];
+  isCustomKey?: boolean;
+  customProvider?: string;
+  customModel?: string;
 };
 
 export type ConversationSession = {
@@ -63,6 +66,7 @@ export interface ApiConversation {
   title: string;
   is_pinned: boolean;
   is_archived: boolean;
+  model?: string;
   created_at: string;
   updated_at: string;
   messages?: ApiMessage[];

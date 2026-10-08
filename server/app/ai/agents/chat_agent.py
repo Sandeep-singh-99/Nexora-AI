@@ -1,5 +1,5 @@
 from langchain.agents import create_agent
-from app.ai.core.llm import get_llm
+from app.ai.core.llm import get_dynamic_chat_model
 from app.ai.tool.tavily import tavily_search
 from app.ai.tool.time import get_current_time
 from app.ai.tool.rag_tool import search_user_documents, list_user_documents
@@ -11,7 +11,7 @@ from app.ai.middleware.tool_error import (
 search_tool = tavily_search()
 
 chat_agent = create_agent(
-    model=get_llm("groq"),
+    model=get_dynamic_chat_model(),
     tools=[get_current_time, search_tool, search_user_documents, list_user_documents],
     middleware=[
         get_tool_error_middleware(),
