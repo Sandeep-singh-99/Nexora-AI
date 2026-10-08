@@ -15,6 +15,7 @@ interface ArtifactContextType {
   toggleMaximize: () => void
   setSplitRatio: (ratio: number) => void
   setActiveArtifact: (artifact: Artifact | null) => void
+  updateArtifactContent: (id: string, newContent: string) => void
   registerArtifacts: (newArtifacts: Artifact[]) => void
   clearArtifacts: () => void
   currentIndex: number
@@ -100,6 +101,18 @@ export function ArtifactProvider({ children }: { children: React.ReactNode }) {
     setActiveArtifactState(artifacts[prevIdx])
   }, [artifacts, currentIndex])
 
+  const updateArtifactContent = useCallback((id: string, newContent: string) => {
+    setActiveArtifactState((prev) => {
+      if (prev && prev.id === id) {
+        return { ...prev, content: newContent }
+      }
+      return prev
+    })
+    setArtifacts((prev) =>
+      prev.map((art) => (art.id === id ? { ...art, content: newContent } : art))
+    )
+  }, [])
+
   const value = useMemo(
     () => ({
       isOpen,
@@ -113,6 +126,7 @@ export function ArtifactProvider({ children }: { children: React.ReactNode }) {
       toggleMaximize,
       setSplitRatio,
       setActiveArtifact: setActiveArtifactState,
+      updateArtifactContent,
       registerArtifacts,
       clearArtifacts,
       currentIndex,
@@ -130,6 +144,7 @@ export function ArtifactProvider({ children }: { children: React.ReactNode }) {
       toggleCanvas,
       toggleMaximize,
       setSplitRatio,
+      updateArtifactContent,
       registerArtifacts,
       clearArtifacts,
       currentIndex,

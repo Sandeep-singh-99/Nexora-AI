@@ -42,6 +42,7 @@ interface ArtifactCodeViewerProps {
   code: string
   language?: string
   title?: string
+  onChange?: (newCode: string) => void
 }
 
 // Maps languages to VS Code style file icons, extensions and colors
@@ -88,7 +89,7 @@ function getLanguageMeta(lang: string) {
   return { name: "Code", ext: "txt", color: "text-slate-300", bg: "bg-slate-300/10", border: "border-slate-300/30", label: "Plain Text" }
 }
 
-export function ArtifactCodeViewer({ code: rawCode, language = "plaintext", title }: ArtifactCodeViewerProps) {
+export function ArtifactCodeViewer({ code: rawCode, language = "plaintext", title, onChange }: ArtifactCodeViewerProps) {
   const initialClean = stripMarkdownCodeFences(rawCode)
   const [code, setCode] = useState<string>(initialClean)
   const [copied, setCopied] = useState<boolean>(false)
@@ -212,6 +213,7 @@ export function ArtifactCodeViewer({ code: rawCode, language = "plaintext", titl
 
       const updated = code.substring(0, start) + "  " + code.substring(end)
       setCode(updated)
+      onChange?.(updated)
 
       requestAnimationFrame(() => {
         textarea.selectionStart = textarea.selectionEnd = start + 2
@@ -427,7 +429,11 @@ export function ArtifactCodeViewer({ code: rawCode, language = "plaintext", titl
               <textarea
                 ref={editorRef}
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setCode(val)
+                  onChange?.(val)
+                }}
                 onKeyDown={handleEditorKeyDown}
                 onSelect={updateCursorPosition}
                 onClick={updateCursorPosition}

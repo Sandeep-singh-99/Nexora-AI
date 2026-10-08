@@ -28,6 +28,7 @@ import {
   Palette,
   Network,
   Terminal,
+  Columns2,
 } from "lucide-react"
 
 export function ArtifactCanvas() {
@@ -41,9 +42,10 @@ export function ArtifactCanvas() {
     selectPrevArtifact,
     toggleMaximize,
     closeCanvas,
+    updateArtifactContent,
   } = useArtifact()
 
-  const [activeTab, setActiveTab] = useState<"preview" | "code">("preview")
+  const [activeTab, setActiveTab] = useState<"preview" | "code" | "split">("preview")
   const [copied, setCopied] = useState<boolean>(false)
 
   // Determine if the artifact can run in interactive sandbox or has visual preview
@@ -54,6 +56,7 @@ export function ArtifactCanvas() {
     activeArtifact &&
       (["html", "mermaid", "markdown", "svg"].includes(activeArtifact.type) || isRunnable)
   )
+  const canSplit = Boolean(activeArtifact && activeArtifact.type === "html")
 
   const effectiveTab = hasPreview ? activeTab : "code"
 
@@ -181,6 +184,22 @@ export function ArtifactCanvas() {
                   : "Preview"}
               </span>
             </button>
+
+            {canSplit && (
+              <button
+                onClick={() => setActiveTab("split")}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-all cursor-pointer ${
+                  effectiveTab === "split"
+                    ? "bg-emerald-500/20 text-emerald-400 font-medium shadow-sm"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+                title="Side-by-side code editor and live preview"
+              >
+                <Columns2 className="h-3.5 w-3.5" />
+                <span>Split</span>
+              </button>
+            )}
+
             <button
               onClick={() => setActiveTab("code")}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-all cursor-pointer ${
@@ -247,7 +266,23 @@ export function ArtifactCanvas() {
 
       {/* Main View Area */}
       <div className="flex-1 overflow-hidden relative">
-        {effectiveTab === "preview" ? (
+        {effectiveTab === "split" && canSplit ? (
+          <div className="flex h-full w-full overflow-hidden">
+            <div className="w-1/2 h-full border-r border-white/10 overflow-hidden">
+              <ArtifactCodeViewer
+                code={activeArtifact.content}
+                language={activeArtifact.language || activeArtifact.type}
+                title={activeArtifact.title || activeArtifact.identifier}
+                onChange={(newContent) => {
+                  updateArtifactContent(activeArtifact.id, newContent)
+                }}
+              />
+            </div>
+            <div className="w-1/2 h-full overflow-hidden">
+              <ArtifactHtmlPreview html={activeArtifact.content} />
+            </div>
+          </div>
+        ) : effectiveTab === "preview" ? (
           <>
             {isRunnable && (
               <ArtifactSandboxPreview artifact={activeArtifact} />
@@ -270,6 +305,9 @@ export function ArtifactCanvas() {
             code={activeArtifact.content}
             language={activeArtifact.language || activeArtifact.type}
             title={activeArtifact.title || activeArtifact.identifier}
+            onChange={(newContent) => {
+              updateArtifactContent(activeArtifact.id, newContent)
+            }}
           />
         )}
       </div>

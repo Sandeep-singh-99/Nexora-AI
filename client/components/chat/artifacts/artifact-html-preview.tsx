@@ -20,6 +20,18 @@ export function ArtifactHtmlPreview({ html }: ArtifactHtmlPreviewProps) {
     return prepareHtmlForSandboxedPreview(html)
   }, [html])
 
+  // Automatically update and reload the iframe when HTML code changes
+  useEffect(() => {
+    setIsLoading(true)
+    if (iframeRef.current) {
+      iframeRef.current.srcdoc = preparedHtml
+    }
+    const timer = setTimeout(() => {
+      setReloadKey((prev) => prev + 1)
+    }, 150)
+    return () => clearTimeout(timer)
+  }, [html, preparedHtml])
+
   const handleReload = () => {
     setIsLoading(true)
     setReloadKey((prev) => prev + 1)
