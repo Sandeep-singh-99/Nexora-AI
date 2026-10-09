@@ -63,3 +63,65 @@ class ChatMessageRequest(BaseModel):
     content: str = Field(..., min_length=1, description="User query or instruction")
     conversation_id: Optional[UUID] = None
     metadata: Optional[Dict[str, Any]] = None
+
+
+class TimelinePoint(BaseModel):
+    label: str
+    date: str
+    prebuilt_tokens: int = 0
+    custom_tokens: int = 0
+    total_tokens: int = 0
+    requests: int = 0
+
+
+class ProviderStat(BaseModel):
+    provider: str
+    tokens: int = 0
+    requests: int = 0
+    percentage: float = 0.0
+    models: Dict[str, int] = Field(default_factory=dict)
+
+
+class ModelStat(BaseModel):
+    model: str
+    provider: str
+    tokens: int = 0
+    requests: int = 0
+    percentage: float = 0.0
+
+
+class TokenActivityItem(BaseModel):
+    id: UUID
+    conversation_id: UUID
+    conversation_title: Optional[str] = "Chat"
+    role: str
+    provider: str
+    model: str
+    is_custom_key: bool = False
+    tokens_used: int = 0
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    created_at: datetime
+
+
+class TokenAnalyticsResponse(BaseModel):
+    timeframe: str
+    total_tokens: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    prebuilt_tokens: int = 0
+    custom_tokens: int = 0
+    prebuilt_percentage: float = 0.0
+    custom_percentage: float = 0.0
+    total_requests: int = 0
+    prebuilt_requests: int = 0
+    custom_requests: int = 0
+    estimated_cost_usd: float = 0.0
+    avg_tokens_per_request: float = 0.0
+    top_provider: Optional[str] = None
+    top_model: Optional[str] = None
+    providers: List[ProviderStat] = Field(default_factory=list)
+    models: List[ModelStat] = Field(default_factory=list)
+    timeline: List[TimelinePoint] = Field(default_factory=list)
+    recent_activity: List[TokenActivityItem] = Field(default_factory=list)
+

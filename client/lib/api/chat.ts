@@ -1,5 +1,5 @@
 import { api } from "./axios";
-import { ApiConversation, ApiConversationListResponse, ApiMessage } from "@/types/chat";
+import { ApiConversation, ApiConversationListResponse, ApiMessage, TokenAnalyticsData } from "@/types/chat";
 
 export async function fetchConversationsApi(limit = 50, offset = 0): Promise<ApiConversation[]> {
   const response = await api.get<ApiConversationListResponse>("/chat/conversations", {
@@ -82,5 +82,14 @@ export async function addMessageApi(
       params: { role },
     }
   );
+  return response.data;
+}
+
+export async function fetchTokenAnalyticsApi(
+  timeframe: "day" | "week" | "month" | "year" | "all" = "week"
+): Promise<TokenAnalyticsData> {
+  const response = await api.get<TokenAnalyticsData>("/chat/analytics", {
+    params: { timeframe },
+  });
   return response.data;
 }

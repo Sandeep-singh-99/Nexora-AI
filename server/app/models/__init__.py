@@ -1,6 +1,7 @@
 from app.models.auth import User, RefreshSession, PasswordResetToken
 from app.models.chat_memory import Conversation, Message, UserMemory, Pin
 from app.models.document import Document, DocumentChunk
+from app.models.analytics import TokenAnalytics
 
 __all__ = [
     "User",
@@ -12,6 +13,8 @@ __all__ = [
     "Pin",
     "Document",
     "DocumentChunk",
+    "TokenAnalytics",
 ]
+
 
 

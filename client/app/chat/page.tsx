@@ -137,9 +137,9 @@ export default function ChatPage() {
   }
 
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false)
-  const [settingsDefaultTab, setSettingsDefaultTab] = useState<"appearance" | "account" | "keys" | "memory" | "data" | "security">("appearance")
+  const [settingsDefaultTab, setSettingsDefaultTab] = useState<"appearance" | "account" | "keys" | "analytics" | "memory" | "data" | "security">("appearance")
 
-  const handleOpenSettings = (tab?: "appearance" | "account" | "keys" | "memory" | "data" | "security") => {
+  const handleOpenSettings = (tab?: "appearance" | "account" | "keys" | "analytics" | "memory" | "data" | "security") => {
     if (tab) {
       setSettingsDefaultTab(tab)
     }
@@ -548,7 +548,11 @@ export default function ChatPage() {
     setInput("")
     setIsLoading(true)
 
-    addMessageApi(currentConvId, originalText, "user").catch((err) =>
+    const userPromptTokens = Math.max(5, Math.ceil(originalText.length / 4))
+    addMessageApi(currentConvId, originalText, "user", {
+      prompt_tokens: userPromptTokens,
+      tokens_used: userPromptTokens,
+    }).catch((err) =>
       console.error("Failed to persist user message:", err)
     )
 
@@ -595,7 +599,18 @@ Click any line in the transcript above to seek the video player to that timestam
         [currentConvId]: (prev[currentConvId] || []).map((m) => (m.id === assistantMsgId ? finalMsg : m)),
       }))
 
-      await addMessageApi(currentConvId, finalContent, "assistant").catch((err) =>
+      const ytPromptTokens = Math.max(5, Math.ceil(originalText.length / 4))
+      const ytCompletionTokens = Math.max(20, Math.ceil(finalContent.length / 4))
+      const ytTotalTokens = ytPromptTokens + ytCompletionTokens
+
+      await addMessageApi(currentConvId, finalContent, "assistant", {
+        is_custom_key: false,
+        provider: "gemini",
+        model: "gemini-1.5-flash",
+        prompt_tokens: ytPromptTokens,
+        completion_tokens: ytCompletionTokens,
+        tokens_used: ytTotalTokens,
+      }).catch((err) =>
         console.error("Failed to persist assistant message:", err)
       )
 
@@ -735,8 +750,12 @@ Click any line in the transcript above to seek the video player to that timestam
       [currentConvId]: [...(prev[currentConvId] || []), userMsg, initialAssistantMsg],
     }))
 
-    // Save user message to backend DB asynchronously
-    addMessageApi(currentConvId, textToSend, "user").catch((err) =>
+    // Save user message to backend DB asynchronously with estimated prompt tokens
+    const userPromptTokens = Math.max(5, Math.ceil(textToSend.length / 4))
+    addMessageApi(currentConvId, textToSend, "user", {
+      prompt_tokens: userPromptTokens,
+      tokens_used: userPromptTokens,
+    }).catch((err) =>
       console.error("Failed to persist user message:", err)
     )
 
@@ -839,13 +858,27 @@ Click any line in the transcript above to seek the video player to that timestam
 
       // Persist assistant message to DB after streaming completes
       if (finalAssistantText) {
+        const promptTokens = Math.max(5, Math.ceil(textToSend.length / 4))
+        const completionTokens = Math.max(10, Math.ceil(finalAssistantText.length / 4))
+        const totalEstimatedTokens = promptTokens + completionTokens
+
         const assistantMetadata = isUsingCustomChatKey
           ? {
               is_custom_key: true,
-              provider: customKeys.chatProvider,
-              model: customKeys.chatModel,
+              provider: customKeys.chatProvider || "custom",
+              model: customKeys.chatModel || "custom-model",
+              prompt_tokens: promptTokens,
+              completion_tokens: completionTokens,
+              tokens_used: totalEstimatedTokens,
             }
-          : undefined
+          : {
+              is_custom_key: false,
+              provider: selectedModel.includes("gemini") ? "gemini" : "groq",
+              model: selectedModel || "llama-3.3-70b-versatile",
+              prompt_tokens: promptTokens,
+              completion_tokens: completionTokens,
+              tokens_used: totalEstimatedTokens,
+            }
 
         await addMessageApi(currentConvId, finalAssistantText, "assistant", assistantMetadata).catch((err) =>
           console.error("Failed to persist assistant message:", err)

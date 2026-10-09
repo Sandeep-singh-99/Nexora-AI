@@ -75,3 +75,65 @@ export interface ApiConversation {
 export interface ApiConversationListResponse {
   conversations: ApiConversation[];
 }
+
+export interface TimelinePoint {
+  label: string;
+  date: string;
+  prebuilt_tokens: number;
+  custom_tokens: number;
+  total_tokens: number;
+  requests: number;
+}
+
+export interface ProviderStat {
+  provider: string;
+  tokens: number;
+  requests: number;
+  percentage: number;
+  models: Record<string, number>;
+}
+
+export interface ModelStat {
+  model: string;
+  provider: string;
+  tokens: number;
+  requests: number;
+  percentage: number;
+}
+
+export interface TokenActivityItem {
+  id: string;
+  conversation_id: string;
+  conversation_title?: string;
+  role: string;
+  provider: string;
+  model: string;
+  is_custom_key: boolean;
+  tokens_used: number;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  created_at: string;
+}
+
+export interface TokenAnalyticsData {
+  timeframe: "day" | "week" | "month" | "year" | "all";
+  total_tokens: number;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  prebuilt_tokens: number;
+  custom_tokens: number;
+  prebuilt_percentage: number;
+  custom_percentage: number;
+  total_requests: number;
+  prebuilt_requests: number;
+  custom_requests: number;
+  estimated_cost_usd?: number;
+  avg_tokens_per_request?: number;
+  top_provider?: string;
+  top_model?: string;
+  providers: ProviderStat[];
+  models: ModelStat[];
+  timeline: TimelinePoint[];
+  recent_activity?: TokenActivityItem[];
+}
+

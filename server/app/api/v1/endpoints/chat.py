@@ -1,6 +1,6 @@
 from typing import List, Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -15,6 +15,7 @@ from app.schemas.chat import (
     ChatMessageRequest,
     TitleGenerateRequest,
     TitleGenerateResponse,
+    TokenAnalyticsResponse,
 )
 from app.services.chat_service import ChatService
 from app.services.memory_service import MemoryService
@@ -270,14 +271,37 @@ async def add_message(
             user_text=payload.content,
         )
 
+    tokens_count = None
+    if payload.metadata and isinstance(payload.metadata, dict):
+        tokens_count = payload.metadata.get("tokens_used")
+    if tokens_count is None:
+        tokens_count = max(15, len(payload.content) // 4)
+
     message = await ChatService.add_message(
         db=db,
         conversation_id=conversation_id,
         role=role,
         content=payload.content,
+        tokens_used=tokens_count,
         extra_metadata=payload.metadata,
     )
     # Invalidate caches so next GET returns new message immediately
     await invalidate_chat_cache(conversation_id=conversation_id, user_id=current_user.id)
     return message
+
+
+@router.get("/analytics", response_model=TokenAnalyticsResponse)
+async def get_token_analytics(
+    timeframe: str = Query("week", pattern="^(day|week|month|year|all)$"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Fetch token spending, provider breakdown, and timeline analytics for current user."""
+    analytics = await ChatService.get_token_analytics(
+        db=db,
+        user_id=current_user.id,
+        timeframe=timeframe,
+    )
+    return analytics
+
 

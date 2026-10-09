@@ -83,6 +83,12 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    token_analytics: Mapped[List["TokenAnalytics"]] = relationship(
+        "TokenAnalytics",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
 
 
 
