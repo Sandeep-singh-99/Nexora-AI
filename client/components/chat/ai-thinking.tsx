@@ -42,7 +42,7 @@ export function AIThinking({
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
             <Sparkles className="relative h-3 w-3 text-emerald-500 dark:text-emerald-400" />
           </span>
-          <span className="bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-500 dark:from-emerald-400 dark:via-teal-300 dark:to-emerald-200 bg-clip-text text-transparent font-semibold">
+          <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
             {activeAgent ? `${activeAgent} Working...` : "Thinking & Reasoning..."}
           </span>
           <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">({thinkingTime})</span>

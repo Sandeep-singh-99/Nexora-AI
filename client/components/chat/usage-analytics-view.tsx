@@ -407,7 +407,7 @@ export function UsageAnalyticsView({
       {/* 4 Hero KPI Bento Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Card 1: Total Tokens */}
-        <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-gradient-to-b from-slate-50/80 to-slate-100/40 dark:from-white/[0.04] dark:to-white/[0.01] p-4 flex flex-col justify-between shadow-xs relative overflow-hidden group">
+        <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-slate-50/80 dark:bg-white/[0.02] p-4 flex flex-col justify-between shadow-xs relative overflow-hidden group">
           <div className="absolute right-0 top-0 translate-x-2 -translate-y-2 opacity-5 dark:opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity">
             <Zap className="h-24 w-24 text-emerald-500" />
           </div>
@@ -439,7 +439,7 @@ export function UsageAnalyticsView({
         </div>
 
         {/* Card 2: Prebuilt Keys (System Default) */}
-        <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-gradient-to-b from-slate-50/80 to-slate-100/40 dark:from-white/[0.04] dark:to-white/[0.01] p-4 flex flex-col justify-between shadow-xs relative overflow-hidden group">
+        <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-slate-50/80 dark:bg-white/[0.02] p-4 flex flex-col justify-between shadow-xs relative overflow-hidden group">
           <div>
             <div className="flex items-center justify-between gap-2 text-slate-500 dark:text-slate-400 mb-2">
               <div className="flex items-center gap-1.5 min-w-0">
@@ -468,7 +468,7 @@ export function UsageAnalyticsView({
         </div>
 
         {/* Card 3: Custom Keys (BYOK) */}
-        <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-gradient-to-b from-slate-50/80 to-slate-100/40 dark:from-white/[0.04] dark:to-white/[0.01] p-4 flex flex-col justify-between shadow-xs relative overflow-hidden group">
+        <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-slate-50/80 dark:bg-white/[0.02] p-4 flex flex-col justify-between shadow-xs relative overflow-hidden group">
           <div>
             <div className="flex items-center justify-between gap-2 text-slate-500 dark:text-slate-400 mb-2">
               <div className="flex items-center gap-1.5 min-w-0">
@@ -497,7 +497,7 @@ export function UsageAnalyticsView({
         </div>
 
         {/* Card 3: Estimated API Spend / Savings */}
-        <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-gradient-to-b from-slate-50/80 to-slate-100/40 dark:from-white/[0.04] dark:to-white/[0.01] p-4 flex flex-col justify-between shadow-xs relative overflow-hidden group">
+        <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-slate-50/80 dark:bg-white/[0.02] p-4 flex flex-col justify-between shadow-xs relative overflow-hidden group">
           <div>
             <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
               <span className="text-[11px] font-bold uppercase tracking-wider">Estimated Value</span>
@@ -518,7 +518,7 @@ export function UsageAnalyticsView({
         </div>
 
         {/* Card 4: Workload & Efficiency */}
-        <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-gradient-to-b from-slate-50/80 to-slate-100/40 dark:from-white/[0.04] dark:to-white/[0.01] p-4 flex flex-col justify-between shadow-xs relative overflow-hidden group">
+        <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-slate-50/80 dark:bg-white/[0.02] p-4 flex flex-col justify-between shadow-xs relative overflow-hidden group">
           <div>
             <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
               <span className="text-[11px] font-bold uppercase tracking-wider">Query Efficiency</span>

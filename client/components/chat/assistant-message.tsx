@@ -323,7 +323,7 @@ export function AssistantMessage({ message, onRegenerate, isPinned, onTogglePin 
   return (
     <div className={`flex w-full gap-3 my-5 group ${isPinned ? "relative pl-3 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-amber-400 before:rounded-full" : ""}`}>
       {/* Nexora AI Icon Avatar */}
-      <div className={cn("h-8 w-8 rounded-xl bg-gradient-to-br p-0.5 shadow-lg shrink-0 flex items-center justify-center", accentConfig.gradient)}>
+      <div className={cn("h-8 w-8 rounded-xl p-0.5 shadow-lg shrink-0 flex items-center justify-center", accentConfig.gradient)}>
         <div className="h-full w-full rounded-[10px] bg-white dark:bg-[#05070B] flex items-center justify-center">
           <Sparkles className={cn("h-4 w-4", accentConfig.activeText)} />
         </div>

@@ -485,7 +485,7 @@ export function ChatInput({
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-xl transition-all",
                   input.trim() && !isLoading
-                    ? cn("text-white shadow-md cursor-pointer bg-gradient-to-r", accentConfig.gradient, accentConfig.hoverGradient)
+                    ? cn("text-white shadow-md cursor-pointer", accentConfig.gradient, accentConfig.hoverGradient)
                     : "bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-white/5 cursor-not-allowed"
                 )}
                 aria-label="Send message"

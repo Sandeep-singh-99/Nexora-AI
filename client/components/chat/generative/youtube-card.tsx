@@ -115,7 +115,7 @@ export function YouTubeCard({
   return (
     <div className="my-4 w-full rounded-2xl border border-red-500/30 bg-[#0B0F17]/95 shadow-2xl overflow-hidden backdrop-blur-xl">
       {/* Header Bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-gradient-to-r from-red-950/30 via-slate-900/40 to-[#0B0F17]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#0D131D]">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-red-600/20 text-red-500 border border-red-500/30 shrink-0">
             <Tv className="h-4 w-4" />

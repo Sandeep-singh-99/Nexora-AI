@@ -25,7 +25,7 @@ export function ProjectCard({
     <div className="w-full max-w-md bg-[#0D131D]/90 border border-white/10 shadow-2xl backdrop-blur-xl rounded-2xl p-4 my-3">
       <div className="flex items-center justify-between pb-3 border-b border-white/5">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30">
+          <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
             <FolderGit2 className="h-5 w-5" />
           </div>
           <div>

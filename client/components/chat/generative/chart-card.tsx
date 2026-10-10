@@ -91,7 +91,7 @@ export function ChartCard({
                       style={{ height: `${heightPercent}%` }}
                       className={`w-full rounded-t-sm transition-all duration-500 ${
                         isLast
-                          ? "bg-gradient-to-t from-emerald-600 to-emerald-400 shadow-lg shadow-emerald-950/50"
+                          ? "bg-emerald-500 shadow-lg shadow-emerald-950/50"
                           : "bg-emerald-500/30 group-hover:bg-emerald-500/50"
                       }`}
                     />

@@ -62,7 +62,7 @@ export function TimeCard({
   }
 
   return (
-    <div className="w-full max-w-md bg-gradient-to-br from-[#0D131D]/95 via-[#0A0F18]/90 to-[#070B12]/95 border border-white/10 shadow-2xl backdrop-blur-2xl rounded-2xl p-4.5 my-3 relative overflow-hidden transition-all duration-300 hover:border-emerald-500/40 hover:shadow-emerald-500/10">
+    <div className="w-full max-w-md bg-[#0A0F18]/95 border border-white/10 shadow-2xl backdrop-blur-2xl rounded-2xl p-4.5 my-3 relative overflow-hidden transition-all duration-300 hover:border-emerald-500/40 hover:shadow-emerald-500/10">
       {/* Background Glows */}
       <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -98,7 +98,7 @@ export function TimeCard({
           <Clock className="h-3.5 w-3.5 text-emerald-400" />
           <span>Current Local Time</span>
         </div>
-        <div className="text-3xl font-black font-mono tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 drop-shadow-sm py-0.5">
+        <div className="text-3xl font-black font-mono tracking-tight text-emerald-300 drop-shadow-sm py-0.5">
           {digitalTime || time}
         </div>
         <div className="text-xs text-slate-300 font-medium flex items-center gap-1.5 mt-1">

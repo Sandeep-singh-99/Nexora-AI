@@ -428,7 +428,7 @@ export function SettingsDialog({
             {/* Header / Logo */}
             <div className="flex items-center gap-3 mb-6 px-2">
               <div
-                className="h-8 w-8 rounded-xl p-1 flex items-center justify-center bg-gradient-to-br shadow-md"
+                className="h-8 w-8 rounded-xl p-1 flex items-center justify-center shadow-md"
                 style={{ background: accentConfig.hex }}
               >
                 <Sparkles className="h-4 w-4 text-white" />
@@ -710,7 +710,7 @@ export function SettingsDialog({
                       )}
                     >
                       {/* Realistic UI Preview */}
-                      <div className="w-full h-24 rounded-xl bg-gradient-to-r from-white to-[#070A0F] border border-slate-200 dark:border-white/10 p-2.5 flex flex-col justify-between shadow-xs mb-3.5">
+                      <div className="w-full h-24 rounded-xl bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-white/10 p-2.5 flex flex-col justify-between shadow-xs mb-3.5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5">
                             <div className="h-2 w-2 rounded-full bg-slate-400" />
@@ -820,7 +820,7 @@ export function SettingsDialog({
                     <button
                       type="button"
                       className={cn(
-                        "p-4 rounded-xl text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 bg-gradient-to-r cursor-pointer",
+                        "p-4 rounded-xl text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer",
                         accentConfig.gradient
                       )}
                     >
@@ -1398,7 +1398,7 @@ export function SettingsDialog({
                     onClick={handleSaveCustomKeys}
                     disabled={isSavingKeys}
                     className={cn(
-                      "w-full sm:w-auto text-xs font-bold text-white rounded-xl px-6 py-2.5 cursor-pointer shadow-md bg-gradient-to-r",
+                      "w-full sm:w-auto text-xs font-bold text-white rounded-xl px-6 py-2.5 cursor-pointer shadow-md",
                       accentConfig.gradient
                     )}
                   >

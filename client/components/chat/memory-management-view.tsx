@@ -418,7 +418,7 @@ export function MemoryManagementView({
 
             <Button
               onClick={() => setIsAddingOpen(!isAddingOpen)}
-              className={cn("text-white text-xs font-semibold cursor-pointer shrink-0 bg-gradient-to-r shadow-xs", accentConfig.gradient)}
+              className={cn("text-white text-xs font-semibold cursor-pointer shrink-0 shadow-xs", accentConfig.gradient)}
             >
               <Plus className="h-3.5 w-3.5 mr-1.5" />
               <span>Add Fact</span>
@@ -481,7 +481,7 @@ export function MemoryManagementView({
                   <Button
                     type="submit"
                     disabled={isAdding || !newText.trim()}
-                    className={cn("text-white text-xs h-8 px-4 font-semibold bg-gradient-to-r", accentConfig.gradient)}
+                    className={cn("text-white text-xs h-8 px-4 font-semibold", accentConfig.gradient)}
                   >
                     {isAdding ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Check className="h-3.5 w-3.5 mr-1" />}
                     Save Memory
@@ -574,7 +574,7 @@ export function MemoryManagementView({
                             <Button
                               onClick={() => handleSaveEdit(mem.id)}
                               disabled={isUpdating || !editText.trim()}
-                              className={cn("h-7 text-xs px-3 text-white font-semibold bg-gradient-to-r", accentConfig.gradient)}
+                              className={cn("h-7 text-xs px-3 text-white font-semibold", accentConfig.gradient)}
                             >
                               {isUpdating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />}
                               Save

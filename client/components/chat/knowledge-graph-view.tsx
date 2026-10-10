@@ -321,13 +321,13 @@ function CustomUserNode({ data, selected }: NodeProps) {
       <Handle type="target" position={Position.Left} className="!w-1.5 !h-1.5 !bg-indigo-500 !opacity-0 group-hover:!opacity-100 transition-opacity" />
       <Handle type="source" position={Position.Right} className="!w-1.5 !h-1.5 !bg-indigo-500 !opacity-0 group-hover:!opacity-100 transition-opacity" />
 
-      {/* Glowing top line */}
-      <div className="absolute inset-x-4 -top-px h-[2px] bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
+      {/* Top line */}
+      <div className="absolute inset-x-4 -top-px h-[2px] bg-indigo-500/50" />
 
       <div className="flex items-center gap-3">
         <div
           className={cn(
-            "relative h-11 w-11 rounded-xl flex items-center justify-center text-white shadow-lg bg-gradient-to-br shrink-0",
+            "relative h-11 w-11 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0",
             accentConfig.gradient
           )}
         >
@@ -756,7 +756,7 @@ function KnowledgeGraphInner({
     <div className="relative w-full h-full flex flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#03060C]">
       {/* Sample Data Banner */}
       {useSampleData && (
-        <div className="shrink-0 px-4 py-1.5 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 border-b border-indigo-500/20 flex items-center justify-between text-xs">
+        <div className="shrink-0 px-4 py-1.5 bg-indigo-500/10 border-b border-indigo-500/20 flex items-center justify-between text-xs">
           <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-medium">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Interactive Demo Graph: Showing sample concepts & relations to preview network capabilities.</span>
@@ -778,7 +778,7 @@ function KnowledgeGraphInner({
       <div className="shrink-0 px-4 py-2.5 border-b border-slate-200 dark:border-white/10 bg-white/80 dark:bg-[#070C18]/80 backdrop-blur-md flex flex-wrap items-center justify-between gap-2.5 z-10">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center text-white bg-gradient-to-br shadow-sm", accentConfig.gradient)}>
+            <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center text-white shadow-sm", accentConfig.gradient)}>
               <Compass className="h-4 w-4" />
             </div>
             <div>

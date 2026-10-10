@@ -42,7 +42,7 @@ export function EmptyState({ onSelectSuggestion }: EmptyStateProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center p-6 text-center max-w-2xl mx-auto my-auto animate-in fade-in-0 zoom-in-95 duration-300">
       {/* Icon */}
-      <div className={cn("mb-4 h-12 w-12 rounded-2xl bg-gradient-to-br p-0.5 shadow-xl", accentConfig.gradient)}>
+      <div className={cn("mb-4 h-12 w-12 rounded-2xl p-0.5 shadow-xl", accentConfig.gradient)}>
         <div className="h-full w-full rounded-[14px] bg-white dark:bg-[#05070B] flex items-center justify-center">
           <Sparkles className={cn("h-6 w-6", accentConfig.activeText)} />
         </div>

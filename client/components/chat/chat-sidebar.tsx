@@ -63,7 +63,7 @@ export function SidebarContent({
       <div className="shrink-0">
         <div className="flex items-center justify-between pb-3">
           <div className="flex items-center gap-2.5">
-            <div className={cn("h-8 w-8 rounded-xl bg-gradient-to-br p-0.5 shadow-md flex items-center justify-center", accentConfig.gradient)}>
+            <div className={cn("h-8 w-8 rounded-xl p-0.5 shadow-md flex items-center justify-center", accentConfig.gradient)}>
               <div className="h-full w-full rounded-[10px] bg-white dark:bg-[#05070B] flex items-center justify-center">
                 <Sparkles className={cn("h-4 w-4", accentConfig.activeText)} />
               </div>
@@ -81,7 +81,7 @@ export function SidebarContent({
         <Button
           onClick={onNewChat}
           className={cn(
-            "w-full mb-4 flex items-center justify-center gap-2 rounded-xl py-2.5 h-10 px-4 text-xs font-bold text-white shadow-md active:scale-[0.98] transition-all cursor-pointer border-0 bg-gradient-to-r",
+            "w-full mb-4 flex items-center justify-center gap-2 rounded-xl py-2.5 h-10 px-4 text-xs font-bold text-white shadow-md active:scale-[0.98] transition-all cursor-pointer border-0",
             accentConfig.gradient,
             accentConfig.hoverGradient
           )}

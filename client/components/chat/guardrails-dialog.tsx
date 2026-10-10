@@ -57,8 +57,8 @@ export function GuardrailsDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
       <div className="relative w-full max-w-lg rounded-2xl border border-amber-500/30 bg-[#0E131F]/98 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        {/* Glow Header Accent */}
-        <div className="h-1 w-full bg-gradient-to-r from-amber-500 via-rose-500 to-amber-500" />
+        {/* Accent Top Border */}
+        <div className="h-1 w-full bg-amber-500" />
 
         {/* Modal Header */}
         <div className="flex items-start justify-between p-5 border-b border-white/10">
