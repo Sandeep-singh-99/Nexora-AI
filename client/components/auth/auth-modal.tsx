@@ -126,17 +126,23 @@ export function AuthModal({ isOpen, onClose, initialTab = "signin" }: AuthModalP
       />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-md bg-[#0D131D] border border-white/[0.12] rounded-3xl p-6 sm:p-8 shadow-2xl shadow-emerald-950/40 z-10 transition-all animate-in zoom-in-95 duration-200 overflow-hidden">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="auth-modal-title"
+        className="relative w-full max-w-md bg-[#0D131D] border border-white/[0.12] rounded-3xl p-6 sm:p-8 shadow-2xl shadow-emerald-950/40 z-10 transition-all animate-in zoom-in-95 duration-200 overflow-hidden"
+      >
         {/* Ambient Radial Glow */}
-        <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
 
         {/* Close Button */}
         <button
+          type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
+          className="absolute top-5 right-5 p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
           aria-label="Close dialog"
         >
-          <X className="w-5 h-5" />
+          <X className="w-5 h-5" aria-hidden="true" />
         </button>
 
         {/* Header Logo */}
@@ -149,6 +155,7 @@ export function AuthModal({ isOpen, onClose, initialTab = "signin" }: AuthModalP
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
               className="text-emerald-400"
+              aria-hidden="true"
             >
               <path
                 d="M4 19L4 5L10 14L16 5L20 5L20 19"
@@ -159,29 +166,33 @@ export function AuthModal({ isOpen, onClose, initialTab = "signin" }: AuthModalP
               />
             </svg>
           </div>
-          <span className="text-lg font-bold text-white tracking-tight">Nexora AI</span>
+          <h2 id="auth-modal-title" className="text-lg font-bold text-white tracking-tight">Nexora AI</h2>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex p-1 bg-white/[0.04] border border-white/[0.06] rounded-2xl mb-6">
+        <div role="tablist" aria-label="Authentication type" className="flex p-1 bg-white/[0.04] border border-white/[0.06] rounded-2xl mb-6">
           <button
+            role="tab"
+            aria-selected={tab === "signin"}
             type="button"
             onClick={() => handleTabChange("signin")}
-            className={`flex-1 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all ${
+            className={`flex-1 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
               tab === "signin"
                 ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/50"
-                : "text-slate-400 hover:text-white"
+                : "text-slate-300 hover:text-white"
             }`}
           >
             Sign In
           </button>
           <button
+            role="tab"
+            aria-selected={tab === "signup"}
             type="button"
             onClick={() => handleTabChange("signup")}
-            className={`flex-1 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all ${
+            className={`flex-1 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
               tab === "signup"
                 ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/50"
-                : "text-slate-400 hover:text-white"
+                : "text-slate-300 hover:text-white"
             }`}
           >
             Create Account
@@ -191,7 +202,7 @@ export function AuthModal({ isOpen, onClose, initialTab = "signin" }: AuthModalP
         {/* Error Alert */}
         {errorMessage && (
           <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-2.5 text-rose-300 text-xs animate-in fade-in duration-200">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" aria-hidden="true" />
             <span className="flex-1">{errorMessage}</span>
           </div>
         )}
@@ -200,7 +211,7 @@ export function AuthModal({ isOpen, onClose, initialTab = "signin" }: AuthModalP
         {successMessage ? (
           <div className="py-6 flex flex-col items-center justify-center text-center space-y-4 animate-in fade-in duration-300">
             <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mb-1">
-              <CheckCircle2 className="w-6 h-6" />
+              <CheckCircle2 className="w-6 h-6" aria-hidden="true" />
             </div>
             <h3 className="text-xl font-bold text-white">
               {tab === "signin" ? "Authenticated!" : "Account Created!"}
@@ -212,25 +223,28 @@ export function AuthModal({ isOpen, onClose, initialTab = "signin" }: AuthModalP
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+              <label htmlFor="auth-email" className="block text-xs font-medium text-slate-300 mb-1.5">
                 Email Address
               </label>
               <div className="relative flex items-center">
-                <Mail className="absolute left-3.5 w-4 h-4 text-slate-500" />
+                <Mail className="absolute left-3.5 w-4 h-4 text-slate-400" aria-hidden="true" />
                 <input
+                  id="auth-email"
+                  name="email"
                   type="email"
+                  autoComplete="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@company.com"
-                  className="w-full pl-10 pr-4 py-2.5 bg-white/[0.04] border border-white/[0.08] focus:border-emerald-500 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 outline-none transition-colors"
+                  className="w-full pl-10 pr-4 py-2.5 bg-white/[0.04] border border-white/[0.08] focus:border-emerald-500 rounded-xl text-xs sm:text-sm text-white placeholder-slate-400 outline-none transition-colors focus-visible:ring-1 focus-visible:ring-emerald-500"
                 />
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-medium text-slate-300">
+                <label htmlFor="auth-password" className="block text-xs font-medium text-slate-300">
                   Password
                 </label>
                 {tab === "signin" && (
@@ -240,15 +254,18 @@ export function AuthModal({ isOpen, onClose, initialTab = "signin" }: AuthModalP
                 )}
               </div>
               <div className="relative flex items-center">
-                <Lock className="absolute left-3.5 w-4 h-4 text-slate-500" />
+                <Lock className="absolute left-3.5 w-4 h-4 text-slate-400" aria-hidden="true" />
                 <input
+                  id="auth-password"
+                  name="password"
                   type="password"
+                  autoComplete={tab === "signin" ? "current-password" : "new-password"}
                   required
                   minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2.5 bg-white/[0.04] border border-white/[0.08] focus:border-emerald-500 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 outline-none transition-colors"
+                  className="w-full pl-10 pr-4 py-2.5 bg-white/[0.04] border border-white/[0.08] focus:border-emerald-500 rounded-xl text-xs sm:text-sm text-white placeholder-slate-400 outline-none transition-colors focus-visible:ring-1 focus-visible:ring-emerald-500"
                 />
               </div>
             </div>
@@ -258,7 +275,7 @@ export function AuthModal({ isOpen, onClose, initialTab = "signin" }: AuthModalP
               variant="primary"
               size="lg"
               disabled={isPending}
-              className="w-full justify-center mt-2 py-3 text-slate-950 font-semibold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-400/30"
+              className="w-full justify-center mt-2 py-3 text-slate-950 font-semibold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-400/30 focus-visible:ring-2 focus-visible:ring-emerald-400"
             >
               {isPending ? (
                 <span className="flex items-center gap-2">
@@ -268,18 +285,18 @@ export function AuthModal({ isOpen, onClose, initialTab = "signin" }: AuthModalP
               ) : (
                 <span className="flex items-center gap-1.5">
                   {tab === "signin" ? "Sign In to Nexora" : "Create Free Account"}
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </span>
               )}
             </Button>
 
-            <p className="mt-4 text-center text-[11px] text-slate-500">
+            <p className="mt-4 text-center text-xs text-slate-400">
               By continuing, you agree to Nexora&apos;s{" "}
-              <a href="#" className="text-slate-400 underline hover:text-white">
+              <a href="#" className="text-slate-300 underline hover:text-white">
                 Terms
               </a>{" "}
               and{" "}
-              <a href="#" className="text-slate-400 underline hover:text-white">
+              <a href="#" className="text-slate-300 underline hover:text-white">
                 Privacy Policy
               </a>
               .

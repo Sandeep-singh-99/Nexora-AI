@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Navbar } from "@/components/landing/navbar";
@@ -9,7 +10,11 @@ import { Features } from "@/components/landing/features";
 import { Testimonials } from "@/components/landing/testimonials";
 import { FinalCTA } from "@/components/landing/final-cta";
 import { Footer } from "@/components/landing/footer";
-import { AuthModal } from "@/components/auth/auth-modal";
+
+const AuthModal = dynamic(
+  () => import("@/components/auth/auth-modal").then((m) => m.AuthModal),
+  { ssr: false }
+);
 
 function HomeContent() {
   const router = useRouter();
@@ -55,7 +60,7 @@ function HomeContent() {
   return (
     <div className="flex flex-col min-h-screen bg-[#05070B] text-[#F5F7FA] selection:bg-emerald-500/30 selection:text-emerald-200">
       <Navbar onOpenAuth={handleOpenAuth} />
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         <Hero onOpenAuth={handleOpenAuth} />
         <Features onOpenAuth={handleOpenAuth} />
         <Testimonials />

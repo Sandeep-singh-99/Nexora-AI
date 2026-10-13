@@ -1,16 +1,15 @@
-"use client";
-
 import * as React from "react";
+import Link from "next/link";
 import { FOOTER_COLUMNS } from "@/lib/constants";
 
 export function Footer() {
   return (
-    <footer className="relative bg-[#030509] text-[#98A2B3] border-t border-white/[0.08] pt-16 pb-12 overflow-hidden font-sans">
+    <footer className="relative bg-[#030509] text-slate-300 border-t border-white/[0.08] pt-16 pb-12 overflow-hidden font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-10 lg:gap-12 pb-16 border-b border-white/[0.06]">
           {/* Brand Column (Spans 2 cols on lg) */}
           <div className="lg:col-span-2 space-y-4">
-            <a href="#" className="flex items-center gap-2.5 inline-block">
+            <Link href="/" aria-label="Nexora Homepage" className="flex items-center gap-2.5 inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded-lg">
               <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-600/30 border border-emerald-500/40">
                 <svg
                   width="18"
@@ -19,6 +18,7 @@ export function Footer() {
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                   className="text-emerald-400"
+                  aria-hidden="true"
                 >
                   <path
                     d="M4 19L4 5L10 14L16 5L20 5L20 19"
@@ -32,8 +32,8 @@ export function Footer() {
               <span className="text-xl font-bold tracking-tight text-[#F5F7FA]">
                 Nexora
               </span>
-            </a>
-            <p className="text-sm text-[#98A2B3] max-w-sm leading-relaxed">
+            </Link>
+            <p className="text-sm text-slate-300 max-w-sm leading-relaxed">
               Your knowledge. Your research. One intelligent workspace.
             </p>
           </div>
@@ -41,15 +41,15 @@ export function Footer() {
           {/* Links Columns */}
           {FOOTER_COLUMNS.map((col) => (
             <div key={col.title} className="space-y-3.5">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#F5F7FA]">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#F5F7FA]">
                 {col.title}
-              </h4>
+              </p>
               <ul className="space-y-2 text-sm">
                 {col.links.map((link) => (
                   <li key={link.label}>
                     <a
                       href={link.href}
-                      className="hover:text-[#F5F7FA] transition-colors"
+                      className="hover:text-[#F5F7FA] text-slate-400 hover:underline transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-400 rounded"
                     >
                       {link.label}
                     </a>
@@ -61,7 +61,7 @@ export function Footer() {
         </div>
 
         {/* Bottom Row */}
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#667085]">
+        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
           <p>&copy; 2026 Nexora AI. All rights reserved.</p>
 
           {/* Social Icons (GitHub, X/Twitter, LinkedIn) */}

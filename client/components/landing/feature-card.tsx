@@ -218,7 +218,7 @@ export function FeatureCard({ feature, index }: FeatureCardProps) {
         </h3>
 
         {/* Description */}
-        <p className="mt-2 text-sm text-[#98A2B3] leading-relaxed group-hover:text-slate-300 transition-colors">
+        <p className="mt-2 text-sm text-slate-300 leading-relaxed group-hover:text-slate-200 transition-colors">
           {feature.description}
         </p>
 
@@ -232,7 +232,7 @@ export function FeatureCard({ feature, index }: FeatureCardProps) {
           {feature.tags.map((tag, tIdx) => (
             <span
               key={tIdx}
-              className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.03] border border-white/[0.06] text-slate-400 group-hover:border-emerald-500/30 group-hover:text-emerald-300/90 transition-colors"
+              className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.03] border border-white/[0.06] text-slate-300 group-hover:border-emerald-500/30 group-hover:text-emerald-300/90 transition-colors"
             >
               {tag}
             </span>

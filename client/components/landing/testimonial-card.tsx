@@ -40,10 +40,10 @@ export function TestimonialCard({ testimonial, index }: TestimonialCardProps) {
           {testimonial.initials}
         </div>
         <div>
-          <h4 className="text-sm font-semibold text-[#F5F7FA] tracking-tight">
+          <h3 className="text-sm font-semibold text-[#F5F7FA] tracking-tight">
             {testimonial.name}
-          </h4>
-          <p className="text-xs text-[#98A2B3]">
+          </h3>
+          <p className="text-xs text-slate-300">
             {testimonial.role} &middot;{" "}
             <span className="text-emerald-300 font-medium">{testimonial.company}</span>
           </p>

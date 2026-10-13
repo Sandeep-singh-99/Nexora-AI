@@ -39,8 +39,9 @@ export function Navbar({ onOpenAuth }: NavbarProps) {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
           {/* Left: Nexora Logo + Wordmark */}
-          <a
-            href="#"
+          <Link
+            href="/"
+            aria-label="Nexora Homepage"
             className="flex items-center gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg p-1"
           >
             <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600/30 via-emerald-500/20 to-teal-500/30 border border-emerald-500/30 group-hover:border-emerald-400/60 transition-all shadow-inner">
@@ -51,6 +52,7 @@ export function Navbar({ onOpenAuth }: NavbarProps) {
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
                 className="text-emerald-400 group-hover:text-emerald-300 transition-colors"
+                aria-hidden="true"
               >
                 <path
                   d="M4 19L4 5L10 14L16 5L20 5L20 19"
@@ -72,7 +74,20 @@ export function Navbar({ onOpenAuth }: NavbarProps) {
                 v2.0
               </span>
             </div>
-          </a>
+          </Link>
+
+          {/* Desktop Center Navigation */}
+          <nav className="hidden md:flex items-center gap-6" aria-label="Main navigation">
+            {NAV_ITEMS.map((item) => (
+              <a
+                key={item.label}
+                href={item.href}
+                className="text-sm font-medium text-slate-300 hover:text-emerald-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded px-1.5 py-0.5"
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
 
           {/* Desktop Right Actions */}
           <div className="hidden md:flex items-center gap-3">
@@ -92,9 +107,11 @@ export function Navbar({ onOpenAuth }: NavbarProps) {
                   <span className="max-w-[140px] truncate">{user.email}</span>
                 </div>
                 <button
+                  type="button"
                   onClick={() => logoutMutation.mutate()}
                   disabled={logoutMutation.isPending}
                   className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-rose-400 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  aria-label="Sign Out"
                   title="Sign Out"
                 >
                   <LogOut className="w-3.5 h-3.5" />
@@ -104,8 +121,9 @@ export function Navbar({ onOpenAuth }: NavbarProps) {
             ) : (
               <>
                 <button
+                  type="button"
                   onClick={() => onOpenAuth?.("signin")}
-                  className="text-sm font-medium text-[#98A2B3] hover:text-[#F5F7FA] px-3 py-2 transition-colors hover:underline underline-offset-4 cursor-pointer"
+                  className="text-sm font-medium text-slate-300 hover:text-[#F5F7FA] px-3 py-2 transition-colors hover:underline underline-offset-4 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg"
                 >
                   Sign In
                 </button>
@@ -126,9 +144,10 @@ export function Navbar({ onOpenAuth }: NavbarProps) {
 
           {/* Mobile Hamburger Menu Icon */}
           <button
+            type="button"
             onClick={() => setMobileOpen(true)}
-            className="md:hidden p-2 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
-            aria-label="Open menu"
+            className="md:hidden p-2 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            aria-label="Open navigation menu"
           >
             <Menu className="w-6 h-6" />
           </button>

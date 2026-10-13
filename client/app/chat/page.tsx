@@ -1,6 +1,8 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from "react"
+import "katex/dist/katex.min.css"
+import "prismjs/themes/prism-tomorrow.css"
 import { useRouter } from "next/navigation"
 import { motion } from "motion/react"
 import { MessageSquare } from "lucide-react"
