@@ -56,7 +56,7 @@ async def create_conversation(
 @router.post("/conversations/{conversation_id}/generate-title", response_model=ConversationResponse)
 async def generate_and_update_conversation_title(
     conversation_id: UUID,
-    payload: TitleGenerateRequest,
+    payload: Optional[TitleGenerateRequest] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -74,10 +74,33 @@ async def generate_and_update_conversation_title(
     if conversation.title and conversation.title.strip() != "New Chat":
         return conversation
 
+    message_text = payload.message if (payload and payload.message) else None
+    doc_name = payload.document_name if payload else None
+    asst_resp = payload.assistant_response if payload else None
+
+    if not message_text:
+        # Load conversation messages to extract first user prompt
+        conversation_with_msgs = await ChatService.get_conversation(
+            db=db,
+            conversation_id=conversation_id,
+            user_id=current_user.id,
+            load_messages=True,
+        )
+        if conversation_with_msgs and conversation_with_msgs.messages:
+            user_msg = next((m for m in conversation_with_msgs.messages if getattr(m, "role", "") == "user"), None)
+            if user_msg:
+                message_text = user_msg.content
+            asst_msg = next((m for m in conversation_with_msgs.messages if getattr(m, "role", "") == "assistant"), None)
+            if asst_msg:
+                asst_resp = asst_msg.content
+
+    if not message_text:
+        message_text = conversation.title or "New Chat"
+
     title = await generate_chatgpt_title(
-        message=payload.message,
-        document_name=payload.document_name,
-        assistant_response=payload.assistant_response,
+        message=message_text,
+        document_name=doc_name,
+        assistant_response=asst_resp,
     )
     conversation = await ChatService.update_conversation(
         db=db,

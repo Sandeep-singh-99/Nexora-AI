@@ -24,7 +24,7 @@ class ConversationCreate(BaseModel):
 
 
 class TitleGenerateRequest(BaseModel):
-    message: str = Field(..., min_length=1, description="User message or prompt")
+    message: Optional[str] = Field(default=None, description="User message or prompt")
     document_name: Optional[str] = None
     assistant_response: Optional[str] = None
 
