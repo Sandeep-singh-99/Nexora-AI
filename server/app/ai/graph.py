@@ -41,10 +41,10 @@ class PostgresCheckpointer(BaseCheckpointSaver):
         self._lock = asyncio.Lock()
 
     async def get_saver(self) -> AsyncPostgresSaver:
-        if self._saver is not None:
+        if self._saver is not None and not getattr(self._saver.conn, "closed", False):
             return self._saver
         async with self._lock:
-            if self._saver is None:
+            if self._saver is None or getattr(self._saver.conn, "closed", False):
                 pool = await get_pg_pool()
                 saver = AsyncPostgresSaver(pool)
                 await saver.setup()

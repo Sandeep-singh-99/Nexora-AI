@@ -53,6 +53,10 @@ def get_postgres_connection_kwargs() -> dict:
         "autocommit": True,
         "prepare_threshold": 0,
         "row_factory": dict_row,
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 5,
     }
 
 
@@ -64,6 +68,10 @@ async def get_pg_pool() -> AsyncConnectionPool:
             conninfo=settings.DATABASE_URL,
             min_size=2,
             max_size=20,
+            max_idle=300.0,
+            max_lifetime=1800.0,
+            check=AsyncConnectionPool.check_connection,
+            reconnect_timeout=60.0,
             kwargs=get_postgres_connection_kwargs(),
             open=False,
         )
