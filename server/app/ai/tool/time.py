@@ -73,10 +73,15 @@ COMMON_TIMEZONE_ALIASES = {
     "china": "Asia/Shanghai",
     "beijing": "Asia/Shanghai",
     "shanghai": "Asia/Shanghai",
+
+    # UTC / GMT
+    "utc": "UTC",
+    "gmt": "Europe/London",
 }
 
 # Fallback UTC offsets (minutes, abbreviation) for systems without tzdata package (e.g. Windows)
 UTC_OFFSET_FALLBACKS = {
+    "UTC": (0, "UTC"),
     "Asia/Kolkata": (330, "IST"),          # UTC +5:30
     "Asia/Tokyo": (540, "JST"),            # UTC +9:00
     "Asia/Dubai": (240, "GST"),            # UTC +4:00
@@ -97,7 +102,7 @@ UTC_OFFSET_FALLBACKS = {
 def resolve_timezone(timezone_input: Any) -> str | None:
     """Resolves timezone input string or dict (including cities, aliases, and misnomers) to a valid IANA timezone."""
     if not timezone_input:
-        return None
+        return "Asia/Kolkata"
 
     if isinstance(timezone_input, dict):
         timezone_str = (
@@ -144,18 +149,32 @@ def resolve_timezone(timezone_input: Any) -> str | None:
         parts = with_slash.split("/")
         return "/".join(p.capitalize() for p in parts)
 
-    return None
+    return "Asia/Kolkata"
 
 
 class GetCurrentTimeInput(BaseModel):
-    timezone: str = Field(
-        default="Asia/Kolkata",
+    timezone: str | None = Field(
+        default=None,
         description="The location, city name (e.g., 'New Delhi', 'London', 'Tokyo', 'New York'), or IANA timezone (e.g., 'Asia/Kolkata') to retrieve current date and time for."
+    )
+    location: str | None = Field(
+        default=None,
+        description="The location or city name if specified (e.g., 'UTC', 'London', 'New Delhi')."
+    )
+    city: str | None = Field(
+        default=None,
+        description="The city name if specified."
     )
 
 
 @tool(args_schema=GetCurrentTimeInput)
-def get_current_time(timezone: str = "Asia/Kolkata", *args: Any, **kwargs: Any) -> str:
+def get_current_time(
+    timezone: str | None = None,
+    location: str | None = None,
+    city: str | None = None,
+    *args: Any,
+    **kwargs: Any
+) -> str:
     """
     Get the current date and time for any location, city, or IANA timezone.
 
@@ -167,7 +186,7 @@ def get_current_time(timezone: str = "Asia/Kolkata", *args: Any, **kwargs: Any) 
     - New York or America/New_York (for New York, USA)
     - Tokyo or Asia/Tokyo (for Tokyo, Japan)
     """
-    target_tz = timezone
+    target_tz = timezone or location or city or "Asia/Kolkata"
     if isinstance(kwargs, dict) and kwargs:
         target_tz = (
             kwargs.get("timezone")
@@ -175,7 +194,7 @@ def get_current_time(timezone: str = "Asia/Kolkata", *args: Any, **kwargs: Any) 
             or kwargs.get("city")
             or target_tz
         )
-    if args and not target_tz:
+    if args and (not target_tz or target_tz == "Asia/Kolkata"):
         target_tz = args[0]
 
     resolved_tz = resolve_timezone(target_tz)

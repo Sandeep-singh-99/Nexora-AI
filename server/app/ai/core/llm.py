@@ -1,6 +1,7 @@
 import contextvars
 from typing import Optional
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import SystemMessage
 from langchain.chat_models import init_chat_model
 from app.core.config import settings
 
@@ -132,7 +133,10 @@ class DynamicChatModel(BaseChatModel):
         if kwargs.get("tool_choice") == "none":
             clean_kwargs = {k: v for k, v in kwargs.items() if k != "tool_choice"}
             return DynamicBoundChatModel(self, [], clean_kwargs)
-        return DynamicBoundChatModel(self, tools, kwargs)
+        clean_kwargs = dict(kwargs)
+        if tools and not clean_kwargs.get("tool_choice"):
+            clean_kwargs["tool_choice"] = "auto"
+        return DynamicBoundChatModel(self, tools, clean_kwargs)
 
     def with_structured_output(self, schema, **kwargs):
         return self._get_active_model().with_structured_output(schema, **kwargs)
@@ -169,6 +173,8 @@ class DynamicBoundChatModel(BaseChatModel):
         clean_bind = dict(self._bind_kwargs)
         if clean_bind.get("tool_choice") == "none":
             clean_bind.pop("tool_choice", None)
+        if not clean_bind.get("tool_choice"):
+            clean_bind["tool_choice"] = "auto"
         return self._parent._get_active_model().bind_tools(self._tools, **clean_bind)
 
     def bind_tools(self, tools, **kwargs):
@@ -177,6 +183,8 @@ class DynamicBoundChatModel(BaseChatModel):
             clean_kwargs = {k: v for k, v in kwargs.items() if k != "tool_choice"}
             return DynamicBoundChatModel(self._parent, [], clean_kwargs)
         merged_kwargs = {**self._bind_kwargs, **kwargs}
+        if tools and not merged_kwargs.get("tool_choice"):
+            merged_kwargs["tool_choice"] = "auto"
         return DynamicBoundChatModel(self._parent, tools, merged_kwargs)
 
     def bind(self, **kwargs):
@@ -198,7 +206,12 @@ class DynamicBoundChatModel(BaseChatModel):
         except Exception as e:
             if "tool choice is none" in str(e).lower():
                 raw_model = self._parent._get_active_model()
-                return raw_model._generate(messages, stop=stop, run_manager=run_manager)
+                fallback_messages = list(messages) + [
+                    SystemMessage(
+                        content="Important: Tool execution is unavailable for this turn. Do NOT call any tools or functions. Answer directly with text."
+                    )
+                ]
+                return raw_model._generate(fallback_messages, stop=stop, run_manager=run_manager)
             raise
 
     async def _agenerate(self, messages, stop=None, run_manager=None, **kwargs):
@@ -209,7 +222,12 @@ class DynamicBoundChatModel(BaseChatModel):
         except Exception as e:
             if "tool choice is none" in str(e).lower():
                 raw_model = self._parent._get_active_model()
-                return await raw_model._agenerate(messages, stop=stop, run_manager=run_manager)
+                fallback_messages = list(messages) + [
+                    SystemMessage(
+                        content="Important: Tool execution is unavailable for this turn. Do NOT call any tools or functions. Answer directly with text."
+                    )
+                ]
+                return await raw_model._agenerate(fallback_messages, stop=stop, run_manager=run_manager)
             raise
 
     def _stream(self, messages, stop=None, run_manager=None, **kwargs):
@@ -220,7 +238,12 @@ class DynamicBoundChatModel(BaseChatModel):
         except Exception as e:
             if "tool choice is none" in str(e).lower():
                 raw_model = self._parent._get_active_model()
-                yield from raw_model._stream(messages, stop=stop, run_manager=run_manager)
+                fallback_messages = list(messages) + [
+                    SystemMessage(
+                        content="Important: Tool execution is unavailable for this turn. Do NOT call any tools or functions. Answer directly with text."
+                    )
+                ]
+                yield from raw_model._stream(fallback_messages, stop=stop, run_manager=run_manager)
             raise
 
     async def _astream(self, messages, stop=None, run_manager=None, **kwargs):
@@ -232,7 +255,12 @@ class DynamicBoundChatModel(BaseChatModel):
         except Exception as e:
             if "tool choice is none" in str(e).lower():
                 raw_model = self._parent._get_active_model()
-                async for chunk in raw_model._astream(messages, stop=stop, run_manager=run_manager):
+                fallback_messages = list(messages) + [
+                    SystemMessage(
+                        content="Important: Tool execution is unavailable for this turn. Do NOT call any tools or functions. Answer directly with text."
+                    )
+                ]
+                async for chunk in raw_model._astream(fallback_messages, stop=stop, run_manager=run_manager):
                     yield chunk
             else:
                 raise
