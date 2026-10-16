@@ -236,7 +236,11 @@ export default function ChatPage() {
     setIsMessagesLoading(true)
     try {
       const msgs = await fetchConversationMessagesApi(convId)
-      const formatted = msgs.map(mapApiToChatMessage)
+      const formatted = msgs.map(mapApiToChatMessage).filter((msg, idx, arr) => {
+        if (idx === 0) return true
+        const prev = arr[idx - 1]
+        return !(prev.role === msg.role && prev.content.trim() === msg.content.trim())
+      })
       setMessagesMap((prev) => {
         // Never overwrite if this conversation already has active or streaming messages
         if (prev[convId] && prev[convId].length > 0) return prev

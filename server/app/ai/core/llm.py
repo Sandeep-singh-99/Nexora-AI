@@ -129,6 +129,9 @@ class DynamicChatModel(BaseChatModel):
         return get_llm(provider=active_p or self.default_provider)
 
     def bind_tools(self, tools, **kwargs):
+        if kwargs.get("tool_choice") == "none":
+            clean_kwargs = {k: v for k, v in kwargs.items() if k != "tool_choice"}
+            return DynamicBoundChatModel(self, [], clean_kwargs)
         return DynamicBoundChatModel(self, tools, kwargs)
 
     def with_structured_output(self, schema, **kwargs):
@@ -157,23 +160,82 @@ class DynamicBoundChatModel(BaseChatModel):
         super().__init__()
         self._parent = parent
         self._tools = tools
-        self._bind_kwargs = bind_kwargs
+        self._bind_kwargs = dict(bind_kwargs)
 
-    def _get_bound(self):
-        return self._parent._get_active_model().bind_tools(self._tools, **self._bind_kwargs)
+    def _get_bound(self, **kwargs):
+        effective_tool_choice = kwargs.get("tool_choice") or self._bind_kwargs.get("tool_choice")
+        if effective_tool_choice == "none" or not self._tools:
+            return self._parent._get_active_model()
+        clean_bind = dict(self._bind_kwargs)
+        if clean_bind.get("tool_choice") == "none":
+            clean_bind.pop("tool_choice", None)
+        return self._parent._get_active_model().bind_tools(self._tools, **clean_bind)
+
+    def bind_tools(self, tools, **kwargs):
+        tool_choice = kwargs.get("tool_choice")
+        if tool_choice == "none":
+            clean_kwargs = {k: v for k, v in kwargs.items() if k != "tool_choice"}
+            return DynamicBoundChatModel(self._parent, [], clean_kwargs)
+        merged_kwargs = {**self._bind_kwargs, **kwargs}
+        return DynamicBoundChatModel(self._parent, tools, merged_kwargs)
+
+    def bind(self, **kwargs):
+        if kwargs.get("tool_choice") == "none":
+            clean_kwargs = {k: v for k, v in kwargs.items() if k != "tool_choice"}
+            return DynamicBoundChatModel(self._parent, [], {**self._bind_kwargs, **clean_kwargs, "tool_choice": "none"})
+        return super().bind(**kwargs)
+
+    def _clean_kwargs(self, kwargs):
+        if kwargs.get("tool_choice") == "none":
+            return {k: v for k, v in kwargs.items() if k != "tool_choice"}
+        return kwargs
 
     def _generate(self, messages, stop=None, run_manager=None, **kwargs):
-        return self._get_bound()._generate(messages, stop=stop, run_manager=run_manager, **kwargs)
+        bound = self._get_bound(**kwargs)
+        clean = self._clean_kwargs(kwargs)
+        try:
+            return bound._generate(messages, stop=stop, run_manager=run_manager, **clean)
+        except Exception as e:
+            if "tool choice is none" in str(e).lower():
+                raw_model = self._parent._get_active_model()
+                return raw_model._generate(messages, stop=stop, run_manager=run_manager)
+            raise
 
     async def _agenerate(self, messages, stop=None, run_manager=None, **kwargs):
-        return await self._get_bound()._agenerate(messages, stop=stop, run_manager=run_manager, **kwargs)
+        bound = self._get_bound(**kwargs)
+        clean = self._clean_kwargs(kwargs)
+        try:
+            return await bound._agenerate(messages, stop=stop, run_manager=run_manager, **clean)
+        except Exception as e:
+            if "tool choice is none" in str(e).lower():
+                raw_model = self._parent._get_active_model()
+                return await raw_model._agenerate(messages, stop=stop, run_manager=run_manager)
+            raise
 
     def _stream(self, messages, stop=None, run_manager=None, **kwargs):
-        yield from self._get_bound()._stream(messages, stop=stop, run_manager=run_manager, **kwargs)
+        bound = self._get_bound(**kwargs)
+        clean = self._clean_kwargs(kwargs)
+        try:
+            yield from bound._stream(messages, stop=stop, run_manager=run_manager, **clean)
+        except Exception as e:
+            if "tool choice is none" in str(e).lower():
+                raw_model = self._parent._get_active_model()
+                yield from raw_model._stream(messages, stop=stop, run_manager=run_manager)
+            raise
 
     async def _astream(self, messages, stop=None, run_manager=None, **kwargs):
-        async for chunk in self._get_bound()._astream(messages, stop=stop, run_manager=run_manager, **kwargs):
-            yield chunk
+        bound = self._get_bound(**kwargs)
+        clean = self._clean_kwargs(kwargs)
+        try:
+            async for chunk in bound._astream(messages, stop=stop, run_manager=run_manager, **clean):
+                yield chunk
+        except Exception as e:
+            if "tool choice is none" in str(e).lower():
+                raw_model = self._parent._get_active_model()
+                async for chunk in raw_model._astream(messages, stop=stop, run_manager=run_manager):
+                    yield chunk
+            else:
+                raise
 
     @property
     def _llm_type(self) -> str:

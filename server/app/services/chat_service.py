@@ -166,6 +166,23 @@ class ChatService:
         now = utc_now()
         meta = dict(extra_metadata) if extra_metadata else {}
 
+        # Prevent duplicate consecutive message insertions within 15 seconds (e.g. client retries or multiple SSE termination triggers)
+        dedup_stmt = (
+            select(Message)
+            .where(
+                Message.conversation_id == conversation_id,
+                Message.role == role,
+                Message.content == content,
+            )
+            .order_by(Message.created_at.desc())
+            .limit(1)
+        )
+        existing = (await db.execute(dedup_stmt)).scalar_one_or_none()
+        if existing and existing.created_at:
+            existing_created = existing.created_at if existing.created_at.tzinfo else existing.created_at.replace(tzinfo=timezone.utc)
+            if abs((now - existing_created).total_seconds()) < 15:
+                return existing
+
         # Ensure tokens_used is computed
         if tokens_used is None or tokens_used <= 0:
             if meta.get("tokens_used"):
