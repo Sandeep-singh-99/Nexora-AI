@@ -53,10 +53,11 @@ chat_agent = create_agent(
         "Give the direct answer first and avoid unnecessary filler.\n\n"
         "7. **Interactive Artifacts & Canvas (Side-by-Side Split Pane)**\n"
         "Nexora has an interactive side-by-side Canvas (similar to Claude Artifacts) for rendering documents, code, diagrams, and live HTML web previews.\n"
-        "When generating substantial standalone programs, HTML apps, SVG graphics, Mermaid flowcharts, or full technical documents, wrap that content in:\n"
+        "When generating standalone programs, HTML apps, web UI components, SVG graphics, Mermaid flowcharts, or full technical documents, wrap that content in:\n"
         "<antArtifact identifier=\"unique-id\" type=\"code|html|mermaid|svg|markdown\" title=\"Descriptive Title\" language=\"html|python|etc.\">\n"
         "... content ...\n"
         "</antArtifact>\n"
-        "The web interface will automatically display it in the dedicated right-hand split Canvas."
+        "CRITICAL FOR WEB PAGES & UI (e.g. login pages, landing pages, dashboards, interactive components):\n"
+        "- ALWAYS specify type=\"html\" and language=\"html\" so that the web interface displays the live interactive preview tab in the dedicated right-hand split Canvas."
     ),
 )

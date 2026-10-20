@@ -29,7 +29,8 @@ router_agent = create_agent(
         "- Debugging\n"
         "- Code generation\n"
         "- Software architecture\n"
-        "- Framework/library implementation\n\n"
+        "- Framework/library implementation\n"
+        "- Building web pages, UI components, HTML/CSS layouts, login pages, and frontend applications\n\n"
         "math_agent:\n"
         "- Mathematical equations\n"
         "- Algebra\n"
@@ -61,6 +62,6 @@ async def router_node(state: AgentState) -> dict:
             return {"next_step": struct_resp.next_step}
         elif isinstance(struct_resp, dict) and "next_step" in struct_resp:
             return {"next_step": struct_resp["next_step"]}
-        return {"next_step": "chat_agent"}
+        return {"next_step": "coding_agent"}
     except Exception:
-        return {"next_step": "chat_agent"}
+        return {"next_step": "coding_agent"}

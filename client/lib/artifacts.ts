@@ -45,6 +45,47 @@ export function normalizeArtifactType(rawType?: string, rawLanguage?: string): A
 }
 
 /**
+ * Detects if content is HTML/web UI code when type or language are generic or omitted.
+ */
+export function isHtmlContent(content: string): boolean {
+  if (!content) return false
+  const trimmed = content.trim()
+  const lower = trimmed.toLowerCase()
+
+  if (
+    lower.startsWith("<!doctype html") ||
+    lower.startsWith("<html") ||
+    lower.includes("<!doctype html") ||
+    (lower.includes("<head") && lower.includes("</head>")) ||
+    (lower.includes("<body") && lower.includes("</body>")) ||
+    (lower.includes("<style") && lower.includes("</style>") && lower.includes("<div")) ||
+    (lower.includes("<script") && lower.includes("</script>") && lower.includes("<div")) ||
+    (lower.includes("<form") && (lower.includes("<input") || lower.includes("<button")))
+  ) {
+    return true
+  }
+  return false
+}
+
+/**
+ * Detects if content is SVG code.
+ */
+export function isSvgContent(content: string): boolean {
+  if (!content) return false
+  const trimmed = content.trim().toLowerCase()
+  return trimmed.startsWith("<svg") || (trimmed.includes("<svg") && trimmed.includes("</svg>"))
+}
+
+/**
+ * Detects if content is Mermaid diagram code.
+ */
+export function isMermaidContent(content: string): boolean {
+  if (!content) return false
+  const trimmed = content.trim()
+  return /^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie|gitGraph)\b/i.test(trimmed)
+}
+
+/**
  * Determine a safe, clean file download name with correct extension.
  */
 export function getArtifactFileName(artifact: Artifact): string {
@@ -190,8 +231,25 @@ export function extractArtifactsFromContent(
     const attrs = parseAttributes(attrString)
 
     const identifier = attrs["identifier"] || attrs["id"] || `artifact-${matchIndex}`
-    const rawType = attrs["type"] || "code"
-    const language = attrs["language"] || attrs["lang"] || (rawType.includes("html") ? "html" : "plaintext")
+    let rawType = attrs["type"] || "code"
+    let language = attrs["language"] || attrs["lang"]
+
+    // If language or type is missing or generic (plaintext, text, code), sniff content
+    if (!language || language === "plaintext" || language === "text" || rawType === "code" || rawType === "text") {
+      if (isHtmlContent(innerContent)) {
+        rawType = "html"
+        language = "html"
+      } else if (isSvgContent(innerContent)) {
+        rawType = "svg"
+        language = "svg"
+      } else if (isMermaidContent(innerContent)) {
+        rawType = "mermaid"
+        language = "mermaid"
+      } else if (!language) {
+        language = rawType.includes("html") ? "html" : "plaintext"
+      }
+    }
+
     const title = attrs["title"] || attrs["name"] || (attrs["identifier"] ? attrs["identifier"] : `Artifact ${matchIndex}`)
     const normalizedType = normalizeArtifactType(rawType, language)
 
@@ -200,7 +258,7 @@ export function extractArtifactsFromContent(
       identifier,
       title,
       type: normalizedType,
-      language,
+      language: language || (normalizedType === "html" ? "html" : "plaintext"),
       content: innerContent,
       messageId,
       createdAt: new Date(),
@@ -226,8 +284,20 @@ export function createArtifactFromCode(
   title?: string,
   messageId?: string
 ): Artifact {
-  const normType = normalizeArtifactType(undefined, language)
+  let effectiveLang = (language || "").toLowerCase().trim()
   const cleanCode = stripMarkdownCodeFences(code)
+
+  if (!effectiveLang || effectiveLang === "plaintext" || effectiveLang === "text" || effectiveLang === "code") {
+    if (isHtmlContent(cleanCode)) {
+      effectiveLang = "html"
+    } else if (isSvgContent(cleanCode)) {
+      effectiveLang = "svg"
+    } else if (isMermaidContent(cleanCode)) {
+      effectiveLang = "mermaid"
+    }
+  }
+
+  const normType = normalizeArtifactType(undefined, effectiveLang)
   const defaultTitle =
     title ||
     (normType === "html"
@@ -238,14 +308,14 @@ export function createArtifactFromCode(
       ? "SVG Graphic"
       : normType === "markdown"
       ? "Document Note"
-      : `${language.toUpperCase()} Snippet`)
+      : `${(effectiveLang || "code").toUpperCase()} Snippet`)
 
   return {
     id: `custom-art-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     identifier: defaultTitle.toLowerCase().replace(/\s+/g, "-"),
     title: defaultTitle,
     type: normType,
-    language: language || "plaintext",
+    language: effectiveLang || (normType === "html" ? "html" : "plaintext"),
     content: cleanCode,
     messageId,
     createdAt: new Date(),
