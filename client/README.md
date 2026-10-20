@@ -71,7 +71,6 @@ client/
 │   │       ├── math-card.tsx     # KaTeX step-by-step calculus & algebra cards
 │   │       ├── project-card.tsx  # Project summary cards
 │   │       ├── search-results.tsx# Live web search citation cards
-│   │       ├── time-card.tsx     # Interactive world clocks
 │   │       └── youtube-card.tsx  # YouTube video player with timestamp seek
 │   ├── landing/              # Landing page components (Hero, Features, Showcase)
 │   └── ui/                   # Reusable UI primitives
@@ -97,7 +96,6 @@ When the backend streams a `ui` SSE event, `generative-ui.tsx` dynamically rende
 
 - **`YouTubeCard`** (`/youtube <URL>`): Plays YouTube videos inline, displays timestamped transcripts with clickable seekers, and provides instantaneous follow-up prompts.
 - **`MathCard`**: Displays exact algebraic solutions, derivations, and formulas using KaTeX with a copyable LaTeX button.
-- **`TimeCard`**: Renders live clocks with timezone offsets and country flags.
 - **`SearchResults`**: Presents web sources with domain icons, titles, and hyperlinks.
 - **`ChartCard` & `DataTable`**: Displays structured analytical data visually or in sortable rows.
 

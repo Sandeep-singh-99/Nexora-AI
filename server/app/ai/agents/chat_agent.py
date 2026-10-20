@@ -1,7 +1,6 @@
 from langchain.agents import create_agent
 from app.ai.core.llm import get_dynamic_chat_model
 from app.ai.tool.tavily import tavily_search
-from app.ai.tool.time import get_current_time
 from app.ai.tool.rag_tool import search_user_documents, list_user_documents
 from app.ai.middleware.tool_error import (
     get_tool_error_middleware,
@@ -12,7 +11,7 @@ search_tool = tavily_search()
 
 chat_agent = create_agent(
     model=get_dynamic_chat_model(),
-    tools=[get_current_time, search_tool, search_user_documents, list_user_documents],
+    tools=[search_tool, search_user_documents, list_user_documents],
     middleware=[
         get_tool_error_middleware(),
         get_tool_retry_middleware(
@@ -20,7 +19,7 @@ chat_agent = create_agent(
             backoff_factor=2.0,
             initial_delay=1.0,
             max_delay=60.0,
-            tools=[get_current_time.name, search_tool.name, search_user_documents.name, list_user_documents.name],
+            tools=[search_tool.name, search_user_documents.name, list_user_documents.name],
         ),
     ],
     system_prompt=(
@@ -41,16 +40,8 @@ chat_agent = create_agent(
         "tables, and code blocks when they improve readability.\n\n"
         "4. **Current Information (Web Search)**\n"
         "Use Tavily web search when the user asks for "
-        "current news, recent events, or web information. "
-        "DO NOT use Tavily web search for current time or date questions.\n\n"
-        "5. **Current Time & Date Inquiries**\n"
-        "When the user asks for the current time or date, you MUST ALWAYS use the get_current_time tool.\n"
-        "If the user does not specify a city or location, call get_current_time with location='UTC' or no arguments.\n"
-        "DO NOT guess the time and DO NOT use Tavily web search.\n"
-        "Format the final response as clean plain text in this structure:\n"
-        "**[City], [Country] ([Timezone])**\n"
-        "Current time: [Formatted Time & Date]\n\n"
-        "6. **User Documents, Uploaded Files & YouTube Videos (Agentic RAG)**\n"
+        "current news, recent events, or web information.\n\n"
+        "5. **User Documents, Uploaded Files & YouTube Videos (Agentic RAG)**\n"
         "Users can upload documents (PDFs and Word DOCX files) and transcribe YouTube videos into their knowledge base.\n"
         "- When the user asks about 'this pdf', 'this document', 'this video', 'this youtube video', 'summarize this video', 'what is in this video', 'where does he talk about X', or asks questions grounded in their files/videos, you MUST use `search_user_documents`.\n"
         "- When an active document or video is scoped (indicated by `[Active Document Scope: \"<filename>\"]`), you MUST answer strictly and exclusively based on that document/video transcript. Call `search_user_documents` with that document's ID.\n"
@@ -58,9 +49,9 @@ chat_agent = create_agent(
         "- When the user asks for the general list or names of all their documents, use `list_user_documents`.\n"
         "- DO NOT assume the user has not uploaded any file or video without checking. If the user refers to 'this document' or 'this video', call `search_user_documents` or `list_user_documents` to verify and retrieve the content.\n"
         "- DO NOT use `search_user_documents` for general knowledge or open-web questions.\n\n"
-        "7. **Conciseness**\n"
+        "6. **Conciseness**\n"
         "Give the direct answer first and avoid unnecessary filler.\n\n"
-        "8. **Interactive Artifacts & Canvas (Side-by-Side Split Pane)**\n"
+        "7. **Interactive Artifacts & Canvas (Side-by-Side Split Pane)**\n"
         "Nexora has an interactive side-by-side Canvas (similar to Claude Artifacts) for rendering documents, code, diagrams, and live HTML web previews.\n"
         "When generating substantial standalone programs, HTML apps, SVG graphics, Mermaid flowcharts, or full technical documents, wrap that content in:\n"
         "<antArtifact identifier=\"unique-id\" type=\"code|html|mermaid|svg|markdown\" title=\"Descriptive Title\" language=\"html|python|etc.\">\n"
@@ -69,4 +60,3 @@ chat_agent = create_agent(
         "The web interface will automatically display it in the dedicated right-hand split Canvas."
     ),
 )
-
